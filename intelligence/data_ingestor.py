@@ -8,7 +8,7 @@ import os
 import pandas as pd
 from typing import List, Dict
 from colorama import Fore
-from logic.verifier import Verifier # Stub for specific validation if needed (not created yet, using regex for now)
+# from logic.verifier import Verifier # Stub for specific validation if needed (not created yet, using regex for now)
 
 # Regex Patterns
 PATTERNS = {
