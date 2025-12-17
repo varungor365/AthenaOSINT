@@ -173,10 +173,18 @@ def upload_data():
     """Upload breach data for the Self-Learning system."""
     # Handle CORS preflight
     if request.method == 'OPTIONS':
-        return jsonify({'success': True}), 200
+        response = jsonify({'success': True})
+        response.headers.add('Access-Control-Allow-Origin', '*')
+        response.headers.add('Access-Control-Allow-Headers', 'Content-Type')
+        response.headers.add('Access-Control-Allow-Methods', 'POST, OPTIONS')
+        return response, 200
     
     try:
+        logger.info(f"Upload request received. Files: {request.files}")
+        logger.info(f"Form data: {request.form}")
+        
         if 'files' not in request.files and 'file' not in request.files:
+            logger.warning("No file in request")
             return jsonify({'success': False, 'error': 'No file part'}), 400
         
         files = request.files.getlist('files')
@@ -185,10 +193,12 @@ def upload_data():
         
         # Ensure upload directory exists
         UPLOAD_DIR.mkdir(parents=True, exist_ok=True)
+        logger.info(f"Upload directory: {UPLOAD_DIR}")
         
         uploaded_count = 0
         for file in files:
             if file.filename == '':
+                logger.warning("Empty filename")
                 continue
             
             if file:
@@ -196,15 +206,20 @@ def upload_data():
                 save_path = UPLOAD_DIR / filename
                 file.save(str(save_path))
                 uploaded_count += 1
-                logger.info(f"File uploaded: {filename}")
+                logger.info(f"File uploaded successfully: {filename} -> {save_path}")
         
-        return jsonify({
+        response = jsonify({
             'success': True, 
             'message': f'Uploaded {uploaded_count} file(s). The Background System is analyzing them.'
         })
+        response.headers.add('Access-Control-Allow-Origin', '*')
+        return response
+        
     except Exception as e:
-        logger.error(f"Upload error: {e}")
-        return jsonify({'success': False, 'error': str(e)}), 500
+        logger.error(f"Upload error: {e}", exc_info=True)
+        response = jsonify({'success': False, 'error': str(e)})
+        response.headers.add('Access-Control-Allow-Origin', '*')
+        return response, 500
 
 @app.route('/api/uploads', methods=['GET'])
 def get_uploads():
