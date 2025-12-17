@@ -7,7 +7,7 @@ Type=simple
 User=root
 WorkingDirectory=/root/AthenaOSINT
 Environment="PATH=/root/AthenaOSINT/venv/bin"
-ExecStart=/root/AthenaOSINT/venv/bin/gunicorn -k eventlet -w 1 -b 127.0.0.1:5000 --timeout 300 --max-requests 1000 --max-requests-jitter 50 run_web:socketio
+ExecStart=/root/AthenaOSINT/venv/bin/gunicorn -k eventlet -w 1 -b 127.0.0.1:5000 --timeout 300 --max-requests 1000 --max-requests-jitter 50 run_web:app
 Restart=always
 RestartSec=10
 
