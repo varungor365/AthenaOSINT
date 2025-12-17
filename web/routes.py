@@ -12,6 +12,13 @@ from pathlib import Path
 from loguru import logger
 import functools
 from io import BytesIO
+import os
+import json
+import uuid
+import signal
+import sys
+import psutil
+import datetime
 
 from web import create_app
 from config import get_config
@@ -104,25 +111,99 @@ from core.background_worker import BackgroundWorker, UPLOAD_DIR
 worker = BackgroundWorker()
 worker.start()
 
+@app.route('/api/system/stats', methods=['GET'])
+def system_stats():
+    """Get real-time system stats."""
+    try:
+        cpu = psutil.cpu_percent(interval=None)
+        memory = psutil.virtual_memory()
+        uptime_seconds = time.time() - psutil.boot_time()
+        uptime_string = str(datetime.timedelta(seconds=int(uptime_seconds)))
+        
+        return jsonify({
+            'success': True,
+            'cpu': cpu,
+            'ram': memory.percent,
+            'uptime': uptime_string,
+            'disk': psutil.disk_usage('/').percent
+        })
+    except Exception as e:
+        return jsonify({'success': False, 'error': str(e)}), 500
+
+@app.route('/api/system/restart', methods=['POST'])
+def restart_system():
+    """Emergency restart of the core engine."""
+    try:
+        # In a real daemon, we might restart a subprocess. 
+        # Here, we'll signal the background worker to restart if we had a handle,
+        # or just exit to let a supervisor restart us.
+        # For this demo, we'll simulate a worker restart.
+        
+        # NOTE: Restarting the whole FLASK app programmatically is hard without a supervisor.
+        # We will instead just re-initialize the engine components.
+        
+        global engine
+        engine = AthenaEngine() # Re-init
+        return jsonify({'success': True, 'message': 'Core Engine re-initialized.'})
+    except Exception as e:
+        return jsonify({'success': False, 'error': str(e)}), 500
+
 @app.route('/api/upload', methods=['POST'])
 def upload_data():
     """Upload breach data for the Self-Learning system."""
-    if 'file' not in request.files:
+    if 'files' not in request.files and 'file' not in request.files:
         return jsonify({'success': False, 'error': 'No file part'}), 400
+    
+    files = request.files.getlist('files')
+    if not files and 'file' in request.files:
+        files = [request.files['file']]
         
-    file = request.files['file']
-    if file.filename == '':
-        return jsonify({'success': False, 'error': 'No selected file'}), 400
+    uploaded_count = 0
+    for file in files:
+        if file.filename == '':
+            continue
         
-    if file:
-        filename = secure_filename(file.filename)
-        save_path = UPLOAD_DIR / filename
-        file.save(str(save_path))
+        if file:
+            filename = secure_filename(file.filename)
+            save_path = UPLOAD_DIR / filename
+            file.save(str(save_path))
+            uploaded_count += 1
+            
+    return jsonify({
+        'success': True, 
+        'message': f'Uploaded {uploaded_count} files. The Background System is analyzing them.'
+    })
+
+@app.route('/api/uploads', methods=['GET'])
+def get_uploads():
+    """Get list of uploaded files and their status."""
+    try:
+        from core.background_worker import UPLOAD_DIR, PROCESSED_DIR, FAILED_DIR
         
-        return jsonify({
-            'success': True, 
-            'message': f'File {filename} uploaded. The Background System is now analyzing it.'
-        })
+        files = []
+        
+        # Helper to add files
+        def add_files_from_dir(directory, status):
+            if directory.exists():
+                for f in directory.glob('*'):
+                    if f.is_file():
+                        files.append({
+                            'name': f.name,
+                            'size': round(f.stat().st_size / 1024, 2), # KB
+                            'status': status,
+                            'time': f.stat().st_mtime
+                        })
+
+        add_files_from_dir(UPLOAD_DIR, 'pending')
+        add_files_from_dir(PROCESSED_DIR, 'analyzed')
+        add_files_from_dir(FAILED_DIR, 'failed')
+        
+        # Sort by time desc
+        files.sort(key=lambda x: x['time'], reverse=True)
+        
+        return jsonify({'success': True, 'files': files})
+    except Exception as e:
+        return jsonify({'success': False, 'error': str(e)}), 500
 
 @app.route('/api/service-status', methods=['GET'])
 def check_service_status():

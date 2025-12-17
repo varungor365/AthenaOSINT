@@ -1,1048 +1,875 @@
 <!DOCTYPE html>
 <html lang="en">
-
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>AthenaOSINT - Dashboard</title>
+    <title>AthenaOSINT Command Center</title>
     <script src="https://cdn.socket.io/4.5.4/socket.io.min.js"></script>
     <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.min.js"></script>
+    <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css" rel="stylesheet">
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;600;700&family=JetBrains+Mono:wght@400;700&display=swap" rel="stylesheet">
     <style>
-        * {
-            margin: 0;
-            padding: 0;
-            box-sizing: border-box;
-        }
-
         :root {
-            --primary: #667eea;
-            --primary-dark: #5568d3;
-            --secondary: #764ba2;
+            --bg-dark: #0f1115;
+            --bg-panel: rgba(30, 32, 40, 0.7);
+            --primary: #6366f1;
+            --primary-glow: rgba(99, 102, 241, 0.4);
+            --accent: #22d3ee; /* Cyan */
+            --accent-glow: rgba(34, 211, 238, 0.4);
+            --text-main: #e2e8f0;
+            --text-muted: #94a3b8;
             --success: #10b981;
             --warning: #f59e0b;
             --danger: #ef4444;
-            --dark: #1f2937;
-            --light: #f9fafb;
-            --border: #e5e7eb;
+            --border: rgba(255, 255, 255, 0.1);
         }
 
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+        
         body {
-            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
-            background: linear-gradient(135deg, var(--primary) 0%, var(--secondary) 100%);
-            min-height: 100vh;
-            padding: 20px;
-        }
-
-        .container {
-            max-width: 1400px;
-            margin: 0 auto;
-        }
-
-        .header {
-            background: white;
-            padding: 30px;
-            border-radius: 10px;
-            box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
-            margin-bottom: 20px;
-            text-align: center;
-        }
-
-        .header h1 {
-            color: var(--primary);
-            font-size: 2.5em;
-            margin-bottom: 10px;
-        }
-
-        .header p {
-            color: #6b7280;
-            font-size: 1.1em;
-        }
-
-        .main-content {
-            display: grid;
-            grid-template-columns: 1fr 2fr;
-            gap: 20px;
-            margin-bottom: 20px;
-        }
-
-        .card {
-            background: white;
-            padding: 25px;
-            border-radius: 10px;
-            box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
-        }
-
-        .card h2 {
-            color: var(--dark);
-            margin-bottom: 20px;
-            padding-bottom: 10px;
-            border-bottom: 2px solid var(--border);
-        }
-
-        .form-group {
-            margin-bottom: 20px;
-        }
-
-        .form-group label {
-            display: block;
-            margin-bottom: 8px;
-            color: var(--dark);
-            font-weight: 600;
-        }
-
-        .form-group input[type="text"] {
-            width: 100%;
-            padding: 12px;
-            border: 2px solid var(--border);
-            border-radius: 8px;
-            font-size: 1em;
-            transition: border-color 0.3s;
-        }
-
-        .form-group input[type="text"]:focus {
-            outline: none;
-            border-color: var(--primary);
-        }
-
-        .modules-grid {
-            display: grid;
-            grid-template-columns: repeat(2, 1fr);
-            gap: 10px;
-            margin-bottom: 20px;
-        }
-
-        .module-checkbox {
-            display: flex;
-            align-items: center;
-            padding: 10px;
-            background: var(--light);
-            border-radius: 6px;
-            cursor: pointer;
-            transition: background 0.3s;
-        }
-
-        .module-checkbox:hover {
-            background: #e5e7eb;
-        }
-
-        .module-checkbox input[type="checkbox"] {
-            margin-right: 10px;
-            width: 18px;
-            height: 18px;
-            cursor: pointer;
-        }
-
-        .module-checkbox label {
-            cursor: pointer;
-            font-size: 0.95em;
-        }
-
-        .button {
-            width: 100%;
-            padding: 14px;
-            border: none;
-            border-radius: 8px;
-            font-size: 1.1em;
-            font-weight: 600;
-            cursor: pointer;
-            transition: all 0.3s;
-            color: white;
-        }
-
-        .button-primary {
-            background: linear-gradient(135deg, var(--primary) 0%, var(--secondary) 100%);
-        }
-
-        .button-primary:hover {
-            transform: translateY(-2px);
-            box-shadow: 0 6px 12px rgba(102, 126, 234, 0.4);
-        }
-
-        .button-primary:disabled {
-            background: #9ca3af;
-            cursor: not-allowed;
-            transform: none;
-        }
-
-        .progress-container {
-            display: none;
-            margin-top: 20px;
-        }
-
-        .progress-bar {
-            width: 100%;
-            height: 30px;
-            background: var(--border);
-            border-radius: 15px;
+            font-family: 'Inter', sans-serif;
+            background-color: var(--bg-dark);
+            background-image: 
+                radial-gradient(circle at 10% 20%, rgba(99, 102, 241, 0.1) 0%, transparent 20%),
+                radial-gradient(circle at 90% 80%, rgba(34, 211, 238, 0.1) 0%, transparent 20%);
+            color: var(--text-main);
+            height: 100vh;
             overflow: hidden;
-            margin-bottom: 10px;
+            display: flex;
         }
 
-        .progress-fill {
-            height: 100%;
-            background: linear-gradient(90deg, var(--primary), var(--secondary));
-            width: 0%;
-            transition: width 0.3s;
+        /* --- LAYOUT --- */
+        .sidebar {
+            width: 260px;
+            background: rgba(20, 20, 25, 0.8);
+            border-right: 1px solid var(--border);
+            display: flex;
+            flex-direction: column;
+            padding: 20px;
+            backdrop-filter: blur(10px);
+            z-index: 10;
+        }
+
+        .main-stage {
+            flex: 1;
+            display: flex;
+            flex-direction: column;
+            padding: 20px;
+            overflow-y: auto;
+            position: relative;
+        }
+
+        .data-panel {
+            width: 350px;
+            background: rgba(20, 20, 25, 0.8);
+            border-left: 1px solid var(--border);
+            padding: 20px;
+            overflow-y: auto;
+            backdrop-filter: blur(10px);
+            display: flex;
+            flex-direction: column;
+            gap: 20px;
+        }
+
+        /* --- COMPONENTS --- */
+        .logo {
+            font-family: 'JetBrains Mono', monospace;
+            font-size: 1.5rem;
+            font-weight: 700;
+            color: white;
+            margin-bottom: 40px;
             display: flex;
             align-items: center;
-            justify-content: center;
-            color: white;
-            font-weight: 600;
+            gap: 10px;
         }
+        .logo i { color: var(--accent); text-shadow: 0 0 10px var(--accent-glow); }
 
-        .status-message {
-            padding: 10px;
-            border-radius: 6px;
-            margin-bottom: 10px;
-            font-size: 0.95em;
-        }
-
-        .status-info {
-            background: #dbeafe;
-            color: #1e40af;
-        }
-
-        .status-success {
-            background: #d1fae5;
-            color: #065f46;
-        }
-
-        .status-warning {
-            background: #fef3c7;
-            color: #92400e;
-        }
-
-        .status-error {
-            background: #fee2e2;
-            color: #991b1b;
-        }
-
-        .results-container {
-            display: none;
-        }
-
-        .results-grid {
-            display: grid;
-            grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
-            gap: 15px;
-            margin-bottom: 20px;
-        }
-
-        .stat-card {
-            background: var(--light);
-            padding: 20px;
+        .nav-item {
+            display: flex;
+            align-items: center;
+            gap: 12px;
+            padding: 12px 15px;
+            color: var(--text-muted);
+            text-decoration: none;
             border-radius: 8px;
-            text-align: center;
+            transition: all 0.2s;
+            margin-bottom: 5px;
+            cursor: pointer;
         }
-
-        .stat-card h3 {
-            color: #6b7280;
-            font-size: 0.9em;
-            margin-bottom: 10px;
-            text-transform: uppercase;
-        }
-
-        .stat-card .number {
-            font-size: 2em;
-            font-weight: bold;
-            color: var(--primary);
-        }
-
-        .results-section {
-            margin-bottom: 20px;
-        }
-
-        .results-section h3 {
-            color: var(--dark);
-            margin-bottom: 15px;
-            padding-bottom: 10px;
-            border-bottom: 1px solid var(--border);
-        }
-
-        .data-list {
-            list-style: none;
-        }
-
-        .data-list li {
-            padding: 10px;
-            background: var(--light);
-            margin-bottom: 8px;
-            border-radius: 6px;
+        .nav-item:hover, .nav-item.active {
+            background: rgba(255,255,255,0.05);
+            color: white;
             border-left: 3px solid var(--primary);
         }
 
-        .data-table {
+        .card {
+            background: var(--bg-panel);
+            border: 1px solid var(--border);
+            border-radius: 12px;
+            padding: 20px;
+            margin-bottom: 20px;
+            box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1);
+        }
+        
+        h2 { font-size: 1.1rem; color: white; margin-bottom: 15px; display: flex; align-items: center; gap: 8px; }
+        h3 { font-size: 0.9rem; color: var(--text-muted); text-transform: uppercase; letter-spacing: 0.05em; margin-bottom: 10px; }
+
+        /* --- SCAN INPUT --- */
+        .scan-input-container {
+            position: relative;
+            margin-bottom: 30px;
+        }
+        .scan-input {
             width: 100%;
-            border-collapse: collapse;
-        }
-
-        .data-table th {
-            background: var(--primary);
+            padding: 18px 20px;
+            padding-left: 55px;
+            background: rgba(0,0,0,0.3);
+            border: 2px solid var(--border);
+            border-radius: 12px;
             color: white;
-            padding: 12px;
-            text-align: left;
+            font-size: 1.1rem;
+            font-family: 'JetBrains Mono', monospace;
+            transition: border-color 0.3s, box-shadow 0.3s;
+        }
+        .scan-input:focus {
+            outline: none;
+            border-color: var(--primary);
+            box-shadow: 0 0 20px var(--primary-glow);
+        }
+        .scan-icon {
+            position: absolute;
+            left: 20px;
+            top: 50%;
+            transform: translateY(-50%);
+            color: var(--text-muted);
+            font-size: 1.2rem;
         }
 
-        .data-table td {
-            padding: 12px;
-            border-bottom: 1px solid var(--border);
+        /* --- MODULE GRID (Modern Accordion) --- */
+        .module-category {
+            margin-bottom: 15px;
         }
-
-        .data-table tr:hover {
-            background: var(--light);
-        }
-
-        .download-buttons {
+        .module-header {
+            padding: 10px 15px;
+            background: rgba(255,255,255,0.03);
+            border-radius: 8px;
+            cursor: pointer;
             display: flex;
+            justify-content: space-between;
+            align-items: center;
+            user-select: none;
+        }
+        .module-header:hover { background: rgba(255,255,255,0.06); }
+        .module-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fill, minmax(200px, 1fr));
             gap: 10px;
-            margin-top: 20px;
+            padding: 10px 0;
+            display: none; /* Hidden by default */
         }
-
-        .button-small {
-            padding: 10px 20px;
-            font-size: 0.9em;
+        .module-grid.active { display: grid; }
+        
+        .module-card {
+            background: rgba(0,0,0,0.2);
+            border: 1px solid var(--border);
+            border-radius: 8px;
+            padding: 12px;
+            cursor: pointer;
+            transition: all 0.2s;
+            position: relative;
+            overflow: hidden;
         }
+        .module-card:hover { border-color: var(--primary); transform: translateY(-2px); }
+        .module-card.selected {
+            background: rgba(99, 102, 241, 0.1);
+            border-color: var(--primary);
+        }
+        .module-card.selected::after {
+            content: '✓';
+            position: absolute;
+            top: 5px;
+            right: 5px;
+            color: var(--primary);
+            font-weight: bold;
+        }
+        .mod-icon { font-size: 1.5rem; margin-bottom: 5px; display: block; }
+        .mod-name { font-weight: 600; font-size: 0.9rem; }
+        .mod-desc { font-size: 0.75rem; color: var(--text-muted); line-height: 1.2; margin-top: 4px; }
 
-        .intelligence-toggle {
+        /* --- BUTTONS --- */
+        .btn {
+            padding: 12px 24px;
+            border-radius: 8px;
+            border: none;
+            font-weight: 600;
+            cursor: pointer;
+            transition: all 0.3s;
+            display: inline-flex;
+            align-items: center;
+            gap: 8px;
+        }
+        .btn-primary {
+            background: linear-gradient(135deg, var(--primary), #818cf8);
+            color: white;
+            box-shadow: 0 4px 15px var(--primary-glow);
+        }
+        .btn-primary:hover { transform: translateY(-2px); box-shadow: 0 6px 20px var(--primary-glow); }
+        .btn-primary:active { transform: translateY(0); }
+        
+        .btn-accent {
+            background: rgba(34, 211, 238, 0.1);
+            color: var(--accent);
+            border: 1px solid var(--accent);
+        }
+        .btn-accent:hover { background: rgba(34, 211, 238, 0.2); }
+
+        /* --- UPLOAD ZONE --- */
+        .upload-zone {
+            border: 2px dashed var(--border);
+            border-radius: 12px;
+            padding: 30px;
+            text-align: center;
+            transition: all 0.3s;
+            background: rgba(0,0,0,0.2);
+            cursor: pointer;
+        }
+        .upload-zone:hover, .upload-zone.dragover {
+            border-color: var(--accent);
+            background: rgba(34, 211, 238, 0.05);
+        }
+        .upload-icon { font-size: 2rem; color: var(--text-muted); margin-bottom: 10px; }
+        
+        /* --- FILE LIST --- */
+        .file-list {
+            list-style: none;
+            max-height: 300px;
+            overflow-y: auto;
+        }
+        .file-item {
             display: flex;
             align-items: center;
-            padding: 15px;
-            background: var(--light);
+            justify-content: space-between;
+            padding: 10px;
+            border-bottom: 1px solid rgba(255,255,255,0.05);
+            font-size: 0.85rem;
+        }
+        .file-status { font-size: 0.75rem; padding: 2px 6px; border-radius: 4px; }
+        .status-pending { background: rgba(245, 158, 11, 0.2); color: var(--warning); }
+        .status-analyzed { background: rgba(16, 185, 129, 0.2); color: var(--success); }
+        .status-failed { background: rgba(239, 68, 68, 0.2); color: var(--danger); }
+
+        /* --- LIVE FEED --- */
+        .feed-container {
+            font-family: 'JetBrains Mono', monospace;
+            font-size: 0.8rem;
+            color: var(--text-muted);
+            height: 200px;
+            overflow-y: auto;
+            background: black;
+            padding: 10px;
             border-radius: 8px;
-            margin-bottom: 20px;
+            border: 1px solid var(--border);
+        }
+        .feed-item { margin-bottom: 5px; border-left: 2px solid transparent; padding-left: 5px; }
+        .feed-info { border-color: var(--primary); color: #a5b4fc; }
+        .feed-success { border-color: var(--success); color: #6ee7b7; }
+        .feed-error { border-color: var(--danger); color: #fca5a5; }
+
+        /* --- CHAT OVERLAY (Floating) --- */
+        .jarvis-widget {
+            position: fixed;
+            bottom: 20px;
+            right: 380px; /* Left of the data panel */
+            width: 350px;
+            height: 400px; /* Default collapsed height could be small */
+            background: rgba(20, 20, 25, 0.95);
+            border: 1px solid var(--primary);
+            border-radius: 12px;
+            display: flex;
+            flex-direction: column;
+            box-shadow: 0 10px 30px rgba(0,0,0,0.5);
+            z-index: 100;
+            backdrop-filter: blur(20px);
+            transition: height 0.3s;
+        }
+        .jarvis-header {
+            padding: 15px;
+            background: linear-gradient(90deg, var(--primary), #818cf8);
+            border-radius: 12px 12px 0 0;
+            font-weight: bold;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            cursor: pointer;
+        }
+        .jarvis-body {
+            flex: 1;
+            padding: 15px;
+            overflow-y: auto;
+            display: flex;
+            flex-direction: column;
+            gap: 10px;
+        }
+        .chat-msg {
+            padding: 8px 12px;
+            border-radius: 8px;
+            font-size: 0.9rem;
+            max-width: 85%;
+        }
+        .msg-user { align-self: flex-end; background: var(--primary); color: white; }
+        .msg-jarvis { align-self: flex-start; background: rgba(255,255,255,0.1); color: var(--text-main); }
+        .jarvis-input-area {
+            padding: 10px;
+            border-top: 1px solid var(--border);
+            display: flex;
+            gap: 5px;
+        }
+        .jarvis-input {
+            flex: 1;
+            background: rgba(0,0,0,0.3);
+            border: 1px solid var(--border);
+            padding: 8px;
+            border-radius: 6px;
+            color: white;
+            outline: none;
         }
 
-        .intelligence-toggle input[type="checkbox"] {
-            margin-right: 10px;
-            width: 20px;
-            height: 20px;
+        /* Scrollbar */
+        ::-webkit-scrollbar { width: 6px; }
+        ::-webkit-scrollbar-track { background: transparent; }
+        ::-webkit-scrollbar-thumb { background: rgba(255,255,255,0.2); border-radius: 3px; }
+        ::-webkit-scrollbar-thumb:hover { background: rgba(255,255,255,0.3); }
+
+        .scan-progress {
+            margin-top: 20px;
+            background: rgba(255,255,255,0.1);
+            height: 4px;
+            border-radius: 2px;
+            overflow: hidden;
+            display: none;
         }
-
-        .badge {
-            display: inline-block;
-            padding: 4px 8px;
-            border-radius: 4px;
-            font-size: 0.85em;
-            font-weight: 600;
-        }
-
-        .badge-success {
-            background: #d1fae5;
-            color: #065f46;
-        }
-
-        .badge-warning {
-            background: #fef3c7;
-            color: #92400e;
-        }
-
-        @media (max-width: 768px) {
-            .main-content {
-                grid-template-columns: 1fr;
-            }
-
-            .modules-grid {
-                grid-template-columns: 1fr;
-            }
+        .scan-progress-bar {
+            height: 100%;
+            background: var(--accent);
+            width: 0%;
+            transition: width 0.3s;
+            box-shadow: 0 0 10px var(--accent);
         }
     </style>
 </head>
-
 <body>
-    <div class="container">
+
+    <!-- SIDEBAR -->
+    <nav class="sidebar">
+        <div class="logo">
+            <i class="fas fa-eye"></i> ATHENA
+        </div>
+        <div class="nav-links">
+            <div class="nav-item active"><i class="fas fa-chart-line"></i> Dashboard</div>
+            <div class="nav-item"><i class="fas fa-network-wired"></i> Graph View</div>
+            <div class="nav-item"><i class="fas fa-history"></i> History</div>
+            <div class="nav-item"><i class="fas fa-cog"></i> Settings</div>
+        </div>
+        <div style="margin-top: auto; padding-top: 20px; border-top: 1px solid var(--border);">
+            <div class="nav-item" style="color: var(--danger);"><i class="fas fa-sign-out-alt"></i> Logout</div>
+        </div>
+    </nav>
+
+    <!-- MAIN CENTER STAGE -->
+    <main class="main-stage">
+        
         <!-- Header -->
-        <div class="header">
-            <h1>🔍 AthenaOSINT</h1>
-            <p>Advanced Open Source Intelligence Framework</p>
+        <div style="margin-bottom: 30px;">
+            <h1 style="font-size: 2rem; font-weight: 300;">Welcome back, Agent.</h1>
+            <p style="color: var(--text-muted);">System status: <span style="color: var(--success);">ONLINE</span></p>
         </div>
 
-        <!-- Main Content -->
-        <div class="main-content">
-            <!-- Scan Configuration -->
-            <div class="card">
-                <h2>Scan Configuration</h2>
-
-                <div class="form-group">
-                    <label for="target">Target</label>
-                    <input type="text" id="target" placeholder="email@example.com, username, or domain.com">
-                    <small id="target-type" style="color: #6b7280; margin-top: 5px; display: block;"></small>
-                </div>
-
-                <div class="form-group">
-                    <label>Select Modules</label>
-                    <div class="module-controls"
-                        style="margin-bottom: 15px; display: flex; gap: 10px; flex-wrap: wrap;">
-                        <!-- Upload Button -->
-                        <div style="position: relative; overflow: hidden; display: inline-block;">
-                            <button class="button button-small" style="background: #8b5cf6;">📂 Upload Breach
-                                Data</button>
-                            <input type="file" id="upload-input"
-                                style="font-size: 100px; position: absolute; left: 0; top: 0; opacity: 0; cursor: pointer;">
-                        </div>
-
-                        <input type="text" id="module-search" placeholder="🔍 Search modules..."
-                            style="flex: 1; min-width: 200px; padding: 8px 12px; border: 2px solid var(--border); border-radius: 6px;">
-                        <button class="button button-small" id="select-all" style="padding: 8px 16px;">Select
-                            All</button>
-                        <button class="button button-small" id="deselect-all" style="padding: 8px 16px;">Deselect
-                            All</button>
-                        <button class="button button-small" id="check-services"
-                            style="padding: 8px 16px; background: #10b981;">🔄 Check Services</button>
-                    </div>
-                    <div id="service-status"
-                        style="margin-bottom: 10px; padding: 10px; background: #f3f4f6; border-radius: 6px; display: none;">
-                        <small><strong>Service Status:</strong> <span id="status-text">Checking...</span></small>
-                    </div>
-                    <script>
- k                        Script
-                        document.g                        tById('upload-input')                        tListener('change', async f) {
-                            file = this.files[0];
-                            if (!file) return;
-                            const formData = new FormData();
-                            formData.append('file', file);
-
-                            alert("Upload started: " + file.name + "\nThe AI Agent will process this in the background.");
-
-                            try {
-                                const res = await fetch('/api/upload', {
-                                    method: 'POST',
-                                    body: formData
-                                });
-                                const d = await res.json();
-                                if (d.success) alert(d.message);
-                                else alert("Error: " + d.error);
-                            } catch (e) { console.error(e); }
-                        });
-                    </script>
-                    <div class="modules-grid" id="modules-container">
-                        <!-- Modules loaded dynamically -->
-                    </div>
-                </div>
-
-                <div class="intelligence-toggle">
-                    <input type="checkbox" id="use-intelligence">
-                    <label for="use-intelligence">
-                        <strong>Enable Intelligence Analysis</strong><br>
-                        <small>Automatically discover related targets and patterns</small>
-                    </label>
-                </div>
-
-                <button class="button button-primary" id="start-scan">
-                    Start Scan
-                </button>
-
-                <div class="progress-container" id="progress-container">
-                    <div class="progress-bar">
-                        <div class="progress-fill" id="progress-fill">0%</div>
-                    </div>
-                    <div id="status-messages"></div>
+        <!-- Scan Config -->
+        <div class="card">
+            <div class="scan-input-container">
+                <i class="fas fa-search scan-icon"></i>
+                <input type="text" class="scan-input" id="target" placeholder="Enter target (IP, Domain, Email, Username, Phone)...">
+            </div>
+            
+            <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 20px;">
+                <h2><i class="fas fa-cubes"></i> Intelligence Modules</h2>
+                <div>
+                   <button class="btn btn-accent" id="select-all" style="font-size: 0.8rem; padding: 6px 12px;">Select All</button>
+                   <button class="btn btn-primary" id="start-scan"><i class="fas fa-play"></i> Start Operation</button>
                 </div>
             </div>
 
-            <!-- Results -->
-            <div class="card">
-                <h2>Scan Results</h2>
-                <div id="results-container" class="results-container">
-                    <div class="results-grid" id="summary-stats">
-                        <!-- Stats loaded dynamically -->
-                    </div>
-
-                    <div id="results-sections">
-                        <!-- Detailed results loaded dynamically -->
-                    </div>
-
-                    <div class="download-buttons">
-                        <button class="button button-primary button-small" id="download-json" style="display: none;">
-                            Download JSON
-                        </button>
-                        <button class="button button-primary button-small" id="download-html" style="display: none;">
-                            Download HTML
-                        </button>
-                    </div>
-                </div>
-                <div id="no-results" style="text-align: center; color: #6b7280; padding: 40px;">
-                    <p>No scan results yet. Start a scan to see results here.</p>
-                </div>
-            </div>
-            <!-- JARVIS TERMINAL -->
-            <div class="card" style="margin-top:20px; background:#1e1e1e; color:#00ff00; font-family:monospace;">
-                <h2 style="color:#00ff00; border-color:#00ff00;">💻 Jarvis Command Terminal</h2>
-                <div id="terminal-output"
-                    style="height:200px; overflow-y:auto; margin-bottom:10px; padding:10px; border:1px solid #333;">
-                    <div>> System Initialized. Type 'help' for commands.</div>
-                </div>
-                <input type="text" id="terminal-input" placeholder="Enter command..."
-                    style="width:100%; padding:10px; background:#000; color:#00ff00; border:none; outline:none;">
+            <div id="modules-container">
+                <!-- Javascript will populate this -->
             </div>
 
-            <script>
-                const termInput = document.getElementById('terminal-input');
-                const termOutput = document.getElementById('terminal-output');
-
-                termInput.addEventListener('keypress', async function (e) {
-                    if (e.key === 'Enter') {
-                        const cmd = this.value;
-                        this.value = '';
-                        logTerm('> ' + cmd);
-
-                        try {
-                            const res = await fetch('/api/jarvis/chat', {
-                                method: 'POST',
-                                headers: { 'Content-Type': 'application/json' },
-                                body: JSON.stringify({ message: cmd })
-                            });
-                            const data = await res.json();
-                            if (data.success && data.data) {
-                                const d = data.data;
-                                logTerm(d.response);
-
-                                if (d.type === 'action' && d.action === 'scan') {
-                                    // Trigger Scan UI
-                                    document.getElementById('target').value = d.target;
-                                    logTerm('[SYSTEM] Auto-filling target and selecting modules: ' + d.modules.join(', '));
-                                    // Auto check modules
-                                    d.modules.forEach(m => {
-                                        const cb = document.getElementById('module-' + m);
-                                        if (cb) cb.checked = true;
-                                    });
-                                    // Optional: document.getElementById('start-scan').click();
-                                }
-                            }
-                        } catch (err) {
-                            logTerm('Error: ' + err);
-                        }
-                    }
-                });
-
-                function logTerm(msg) {
-                    const line = document.createElement('div');
-                    line.textContent = msg;
-                    termOutput.appendChild(line);
-                    termOutput.scrollTop = termOutput.scrollHeight;
-                }
-            </script>
+            <div class="scan-progress" id="scan-progress">
+                <div class="scan-progress-bar" id="progress-bar"></div>
+            </div>
+            <div id="status-text" style="margin-top: 10px; color: var(--accent); font-family: monospace; display: none;">Initializing...</div>
         </div>
 
-        <script>
-            // Initialize SocketIO
-            const socket = io();
-            let currentScanId = null;
+        <!-- Results Area -->
+        <div id="results-area" class="card" style="display: none;">
+            <h2><i class="fas fa-poll"></i> Operation Results</h2>
+            <div id="results-content"></div>
+        </div>
 
-            // Elements
-            const targetInput = document.getElementById('target');
-            const targetTypeText = document.getElementById('target-type');
-            const startButton = document.getElementById('start-scan');
-            const progressContainer = document.getElementById('progress-container');
-            const progressFill = document.getElementById('progress-fill');
-            const statusMessages = document.getElementById('status-messages');
-            const resultsContainer = document.getElementById('results-container');
-            const noResults = document.getElementById('no-results');
-            const useIntelligence = document.getElementById('use-intelligence');
+    </main>
 
-            // Load modules on page load
-            loadModules();
+    <!-- RIGHT DATA PANEL -->
+    <aside class="data-panel">
+        
+        <!-- Upload Section -->
+        <div class="card">
+            <h2><i class="fas fa-cloud-upload-alt"></i> Data Ingestion</h2>
+            <div class="upload-zone" id="upload-zone">
+                <i class="fas fa-file-import upload-icon"></i>
+                <p>Drag & Drop Breach Data</p>
+                <p style="font-size: 0.8rem; color: var(--text-muted); margin-top: 5px;">(Multi-file supported)</p>
+                <input type="file" id="file-input" multiple style="display: none;">
+            </div>
+        </div>
 
-            // Socket event listeners
-            socket.on('connect', () => {
-                console.log('Connected to server');
-            });
+        <!-- Knowledge Base -->
+        <div class="card" style="flex: 1; display: flex; flex-direction: column;">
+            <h2><i class="fas fa-database"></i> Knowledge Base</h2>
+            <div class="file-list" id="file-list">
+                <!-- Populated by JS -->
+                <div style="text-align: center; color: var(--text-muted); padding: 20px;">
+                    <i class="fas fa-spinner fa-spin"></i> Loading...
+                </div>
+            </div>
+        </div>
+        
+        <!-- Live Feed -->
+        <div class="card">
+            <h2><i class="fas fa-terminal"></i> Live Feed</h2>
+            <div class="feed-container" id="live-feed">
+                <div class="feed-item feed-info">[SYSTEM] Dashboard initialized.</div>
+                <div class="feed-item feed-info">[SYSTEM] Connected to Intelligence Core.</div>
+            </div>
+        </div>
 
-            socket.on('scan_update', (data) => {
-                handleScanUpdate(data);
-            });
+        <!-- SYSTEM MONITOR -->
+        <div class="card">
+             <div style="display:flex; justify-content:space-between; align-items:center;">
+                <h2><i class="fas fa-microchip"></i> System Monitor</h2>
+                <button id="restart-btn" class="btn btn-accent" style="padding:4px 8px; font-size:0.75rem; border-color:var(--danger); color:var(--danger);"><i class="fas fa-power-off"></i> Restart</button>
+             </div>
+             
+             <div style="margin-top:10px; font-size:0.9rem;">
+                 <div style="display:flex; justify-content:space-between; margin-bottom:5px;">
+                     <span style="color:var(--text-muted)">CPU</span>
+                     <span id="sys-cpu" style="color:var(--accent)">0%</span>
+                 </div>
+                 <div style="background:rgba(255,255,255,0.1); height:4px; border-radius:2px; margin-bottom:15px; overflow:hidden;">
+                     <div id="bar-cpu" style="width:0%; height:100%; background:var(--accent); transition:width 0.5s;"></div>
+                 </div>
 
-            // Target validation
-            targetInput.addEventListener('input', async () => {
-                const target = targetInput.value.trim();
-                if (!target) {
-                    targetTypeText.textContent = '';
-                    return;
-                }
+                 <div style="display:flex; justify-content:space-between; margin-bottom:5px;">
+                     <span style="color:var(--text-muted)">RAM</span>
+                     <span id="sys-ram" style="color:var(--secondary)">0%</span>
+                 </div>
+                 <div style="background:rgba(255,255,255,0.1); height:4px; border-radius:2px; margin-bottom:15px; overflow:hidden;">
+                     <div id="bar-ram" style="width:0%; height:100%; background:var(--primary); transition:width 0.5s;"></div>
+                 </div>
 
-                try {
-                    const response = await fetch('/api/validate', {
-                        method: 'POST',
-                        headers: { 'Content-Type': 'application/json' },
-                        body: JSON.stringify({ target })
-                    });
+                 <div style="display:flex; justify-content:space-between;">
+                     <span style="color:var(--text-muted)">Uptime</span>
+                     <span id="sys-uptime" style="color:white; font-family:monospace;">00:00:00</span>
+                 </div>
+             </div>
+        </div>
 
-                    const data = await response.json();
-                    if (data.valid) {
-                        targetTypeText.textContent = `✓ Detected as: ${data.target_type}`;
-                        targetTypeText.style.color = '#10b981';
-                    } else {
-                        targetTypeText.textContent = '✗ Invalid target format';
-                        targetTypeText.style.color = '#ef4444';
-                    }
-                } catch (error) {
-                    console.error('Validation error:', error);
-                }
-            });
 
-            // Start scan button
-            startButton.addEventListener('click', async () => {
-                const target = targetInput.value.trim();
-                if (!target) {
-                    alert('Please enter a target');
-                    return;
-                }
+    </aside>
 
-                const selectedModules = Array.from(
-                    document.querySelectorAll('.module-checkbox input:checked')
-                ).map(cb => cb.value);
+    <!-- JARVIS WIDGET -->
+    <div class="jarvis-widget" id="jarvis-widget">
+        <div class="jarvis-header" onclick="toggleJarvis()">
+            <span><i class="fas fa-robot"></i> JARVIS</span>
+            <i class="fas fa-chevron-down"></i>
+        </div>
+        <div class="jarvis-body" id="jarvis-chat">
+            <div class="chat-msg msg-jarvis">
+                Systems online. Ready for command.
+            </div>
+        </div>
+        <div class="jarvis-input-area">
+            <input type="text" class="jarvis-input" id="jarvis-input" placeholder="Type a command...">
+            <button class="btn btn-primary" id="jarvis-send" style="padding: 8px;"><i class="fas fa-paper-plane"></i></button>
+        </div>
+    </div>
 
-                if (selectedModules.length === 0) {
-                    alert('Please select at least one module');
-                    return;
-                }
+    <!-- SCRIPTS -->
+    <script>
+        const socket = io();
+        let activeModules = new Set();
+        let allModulesData = {};
 
-                try {
-                    startButton.disabled = true;
-                    progressContainer.style.display = 'block';
-                    resultsContainer.style.display = 'none';
-                    noResults.style.display = 'none';
-                    statusMessages.innerHTML = '';
+        /* --- INITIALIZATION --- */
+        document.addEventListener('DOMContentLoaded', () => {
+             loadModules();
+             startFilePolling();
+             startSystemMonitor();
+             
+             // Feed
+             logFeed("Data stream active.", "success");
+        });
 
-                    const response = await fetch('/api/scan', {
-                        method: 'POST',
-                        headers: { 'Content-Type': 'application/json' },
-                        body: JSON.stringify({
-                            target: target,
-                            selectedModules,
-                            use_intelligence: useIntelligence.checked
-                        })
-                    });
+        /* --- SYSTEM MONITOR --- */
+        function startSystemMonitor() {
+            setInterval(updateSystemStats, 2000);
+            updateSystemStats();
+        }
 
-                    const data = await response.json();
-                    if (data.success) {
-                        currentScanId = data.scan_id;
-                    } else {
-                        alert(data.error);
-                        startButton.disabled = false;
-                    }
-                } catch (error) {
-                    alert('Failed to start scan: ' + error.message);
-                    startButton.disabled = false;
-                }
-            });
+        async function updateSystemStats() {
+             try {
+                 const res = await fetch('/api/system/stats');
+                 const d = await res.json();
+                 if(d.success) {
+                     document.getElementById('sys-cpu').textContent = d.cpu + "%";
+                     document.getElementById('bar-cpu').style.width = d.cpu + "%";
+                     
+                     document.getElementById('sys-ram').textContent = d.ram + "%";
+                     document.getElementById('bar-ram').style.width = d.ram + "%";
+                     
+                     document.getElementById('sys-uptime').textContent = d.uptime;
+                 }
+             } catch(e) { console.error("Stats error", e); }
+        }
 
-            // Module descriptions and tags
-            const moduleInfo = {
-                'sherlock': { desc: 'Find usernames across 400+ social networks', tag: '👤 Social', category: 'username' },
-                'holehe': { desc: 'Check email registration on 120+ websites', tag: '📧 Email', category: 'email' },
-                'leak_checker': { desc: 'Search data breaches and password leaks', tag: '🔓 Breaches', category: 'breach' },
-                'theharvester': { desc: 'Gather emails, subdomains, IPs from search engines', tag: '🌐 OSINT', category: 'recon' },
-                'subfinder': { desc: 'Discover subdomains using passive sources', tag: '🔍 DNS', category: 'recon' },
-                'wayback': { desc: 'Access archived website versions and history', tag: '⏰ Archive', category: 'recon' },
-                'nuclei': { desc: 'Scan for vulnerabilities and misconfigurations', tag: '🛡️ Security', category: 'security' },
-                'dnsdumpster': { desc: 'DNS reconnaissance and mapping', tag: '🌐 DNS', category: 'recon' },
-                'exiftool': { desc: 'Extract metadata from images and files', tag: '📷 Metadata', category: 'forensics' },
-                'auto_dorker': { desc: 'Automated Google Dorks for sensitive files', tag: '🔎 Dorks', category: 'recon' },
-                'cloud_hunter': { desc: 'Find exposed cloud storage buckets', tag: '☁️ Cloud', category: 'cloud' },
-                'crypto_hunter': { desc: 'Track cryptocurrency addresses and transactions', tag: '₿ Crypto', category: 'blockchain' },
-                'profile_scraper': { desc: 'Extract detailed social media profile data', tag: '📱 Social', category: 'social' },
-                'sentiment': { desc: 'Analyze sentiment and reputation online', tag: '💭 Analysis', category: 'analysis' },
-                'ocr': { desc: 'Extract text from images using Tesseract', tag: '📸 OCR', category: 'forensics' },
-                'email_permutator': { desc: 'Generate and verify email address variations', tag: '📧 Email', category: 'email' },
-                'job_hunter': { desc: 'Analyze job postings for tech stack intel', tag: '💼 Jobs', category: 'recon' },
-                'canary_checker': { desc: 'Detect honeypots and monitoring systems', tag: '🐦 Security', category: 'security' }
-            };
-
-            let allModules = [];
-
-            async function loadModules() {
-                try {
-                    const response = await fetch('/api/modules');
-                    const data = await response.json();
-
-                    if (data.success) {
-                        allModules = Object.entries(data.modules).filter(([name, info]) => info.available);
-                        renderModules(allModules);
-                    }
-                } catch (error) {
-                    console.error('Failed to load modules:', error);
-                }
-            }
-
-            function renderModules(modules) {
-                const container = document.getElementById('modules-container');
-                container.innerHTML = '';
-
-                // Group by category
-                const categories = {};
-
-                modules.forEach(([name, info]) => {
-                    const cat = info.category || 'Other';
-                    if (!categories[cat]) categories[cat] = [];
-                    categories[cat].push([name, info]);
-                });
-
-                // Create Accordion Sections
-                for (const [cat, mods] of Object.entries(categories)) {
-                    const section = document.createElement('div');
-                    section.className = 'category-section';
-                    section.style.marginBottom = '20px';
-
-                    const header = document.createElement('h3');
-                    header.textContent = cat;
-                    header.style.borderBottom = '1px solid #ddd';
-                    header.style.paddingBottom = '5px';
-                    header.style.marginBottom = '10px';
-                    header.style.color = '#555';
-                    section.appendChild(header);
-
-                    const grid = document.createElement('div');
-                    grid.className = 'modules-grid';
-
-                    mods.forEach(([name, info]) => {
-                        const div = document.createElement('div');
-                        div.className = 'module-checkbox';
-                        div.innerHTML = `
-                         <input type="checkbox" value="${name}" id="module-${name}" checked>
-                         <label for="module-${name}" title="${info.description}">
-                             <span style="font-size:1.2em; margin-right:5px;">${info.emoji || '🔧'}</span>
-                             <strong>${name}</strong>
-                             <br><small style="color:#666;">${info.description.substring(0, 40)}...</small>
-                         </label>
-                     `;
-                        grid.appendChild(div);
-                    });
-
-                    section.appendChild(grid);
-                    container.appendChild(section);
-                }
-            }
-
-            // Search functionality
-            document.addEventListener('DOMContentLoaded', () => {
-                const searchInput = document.getElementById('module-search');
-                searchInput.addEventListener('input', (e) => {
-                    const searchTerm = e.target.value.toLowerCase();
-                    const filtered = allModules.filter(([name, info]) => {
-                        const mInfo = moduleInfo[name] || {};
-                        return name.toLowerCase().includes(searchTerm) ||
-                            (mInfnfo.desc.toLowerCase().includes(searchTerm)) ||
-                            (mInfo.tag && mInfo.tag.toLowerCase().includes(searchTerm)) ||
-                            (mInfo.category && mInfo.category.toLowerCase().includes(searchTerm));
-                    });
-                    renderModules(filtered);
-                });
-
-                // Select/Deselect All
-                document.getElementById('select-all').addEventListener('click', () => {
-                    document.querySelectorAll('.module-checkbox input[type="checkbox"]').forEach(cb => cb.checked = true);
-                });
-
-                document.getElementById('deselect-all').addEventListener('click', () => {
-                    document.querySelectorAll('.module-checkbox input[type="checkbox"]').forEach(cb => cb.checked = false);
-                });
-
-                // Check Services
-                document.getElementById('check-services').addEventListener('click', checkServiceStatus);
-                async function checkServiceStatus() {
-                    const statusDiv = document.getElementById('service-status');
-                    const statusText = document.getElementById('status-text');
-                    statusDiv.style.display = 'block';
-                    statusText.innerHTML = '🔄 Checking services...';
-
-                    try {
-                        const response = await fetch('/api/service-status');
-                        const data = await response.json();
-
-                        if (data.success) {
-                            const live = data.services.filter(s => s.status === 'live').length;
-                            const total = data.services.length;
-                            statusText.innerHTML = `✅ ${live}/${total} services operational`;
-
-                            // Update individual service indicators
-                            data.services.forEach(service => {
-                                const indicators = document.querySelectorAll(`[data-service="${service.name}"]`);
-                                indicators.forEach(indicator => {
-                                    if (service.status === e') {
-                                    indicator.innerHTML = '🟢';
-                                    indicator.title = 'Service Online';
-                                } else {
-                                    indicator.innerHTML = '🔴';
-                                    i.title = 'Service Offline';
-                                }
-                        });
-                        });
+        document.getElementById('restart-btn').onclick = async () => {
+            if(!confirm("Are you sure you want to RESTART the Core Engine? Active scans will be aborted.")) return;
+            
+            logFeed("Initiating EMERGENCY RESTART...", "error");
+            try {
+                const res = await fetch('/api/system/restart', { method: 'POST' });
+                const d = await res.json();
+                if(d.success) {
+                    logFeed("System Restarted. Reconnecting...", "info");
+                    setTimeout(() => location.reload(), 3000);
                 } else {
-                statusText.innerHTML = '⚠️ Could not check services';
+                    logFeed("Restart Failed: " + d.error, "error");
+                }
+            } catch(e) { logFeed("Restart Error: " + e, "error"); }
+        };
+
+        /* --- MODULES --- */
+        async function loadModules() {
+            try {
+                const res = await fetch('/api/modules');
+                const data = await res.json();
+                if(data.success) {
+                    renderModules(data.modules);
+                    allModulesData = data.modules;
+                }
+            } catch(e) { console.error(e); }
+        }
+
+        function renderModules(modules) {
+            const container = document.getElementById('modules-container');
+            container.innerHTML = '';
+            
+            // Group by Activity
+            const categories = {};
+            for(const [key, val] of Object.entries(modules)) {
+                const cat = val.category || 'Other';
+                if(!categories[cat]) categories[cat] = [];
+                categories[cat].push({key, ...val});
             }
-            } catch (error) {
-                statusText.innerHTML = '❌ Check failed';
-                sole.error('Service check failed:', error);
+
+            for(const [cat, items] of Object.entries(categories)) {
+                const group = document.createElement('div');
+                group.className = 'module-category';
+                
+                const header = document.createElement('div');
+                header.className = 'module-header';
+                header.innerHTML = `<strong>${cat}</strong> <small style="color:var(--text-muted)">${items.length} modules</small>`;
+                header.onclick = () => { grid.classList.toggle('active'); };
+                
+                const grid = document.createElement('div');
+                grid.className = 'module-grid active'; // Default open for now
+                
+                items.forEach(item => {
+                    const card = document.createElement('div');
+                    card.className = 'module-card';
+                    if (activeModules.has(item.key)) {
+                        card.classList.add('selected');
+                    }
+                    card.innerHTML = `
+                        <span class="mod-icon">${item.emoji}</span>
+                        <div class="mod-name">${item.key}</div>
+                        <div class="mod-desc">${item.desc}</div>
+                    `;
+                    card.onclick = () => toggleModule(card, item.key);
+                    grid.appendChild(card);
+                });
+
+                group.appendChild(header);
+                group.appendChild(grid);
+                container.appendChild(group);
             }
         }
 
-            funcdleScanUpdate(data) {
-                if (data.scan_id !== currentScanId) return;
-
-                // Update progress
-                if (data.progress !== undefined) {
-                    progressFill.style.width = data.progress + '%';
-                    progressFill.textContent = data.progress + '%';
-                }
-
-                // Add status message
-                if (data.message) {
-                    const messageDiv = document.createElement('div');
-                    messageDiv.className = 'status-message status-' + data.status;
-                    messageDiv.textContent = data.message;
-                    statusMessages.insertBefore(messageDiv, statusMessages.firstChild);
-                }
-
-                // Handle completion
-                if (data.status === 'completed') {
-                    startButton.disabled = false;
-                    displayResults(data.results, data.summary, data.reports);
-                } else if (data.status === 'failed') {
-                    startButton.disabled = false;
-                    alert('Scan failed: ' + data.error);
-                }
+        function toggleModule(card, key) {
+            if(activeModules.has(key)) {
+                activeModules.delete(key);
+                card.classList.remove('selected');
+            } else {
+                activeModules.add(key);
+                card.classList.add('selected');
             }
+        }
 
-            function displayResults(results, summary, reports) {
-                resultsContainer.style.display = 'block';
-                noResults.stylenone';
+        document.getElementById('select-all').onclick = () => {
+            document.querySelectorAll('.module-card').forEach(c => {
+                 if(!c.classList.contains('selected')) c.click();
+            });
+        };
 
-                // Display summary stats
-                const statsContainer = document.getElementById('summary-stats');
-                statsContainer.inn erHTML = `
-                <div cl ass="stat-card">
-                    <h3>Emai ls</h3>
-                     <div class="number">${summary.emails}</div>
-                </div> <div class="stat-card">
-                    <h3>Usernames</h3>
-                   >${summary.usernames}</div>
-                </div>
-                <div class="stat-card">
-                    <h3>Breaches</h3>
-                    <div class="number">${summary.breaches}</div>
-                </div>
-                <div class="stat-card">
-                    <h3>Domains</h3>
-                    <div class="number">${summary.domains}</div>
-                </div>
-            `;
+        /* --- DRAG & DROP UPLOAD --- */
+        const dropZone = document.getElementById('upload-zone');
+        const fileInput = document.getElementById('file-input');
 
-                // Display detailed results
-                const sectionsContainer = document.getElementById('results-sections');
-                sectionsContainer.innerHTML = '';
+        dropZone.onclick = () => fileInput.click();
+        dropZone.ondragover = (e) => { e.preventDefault(); dropZone.classList.add('dragover'); };
+        dropZone.ondragleave = () => dropZone.classList.remove('dragover');
+        dropZone.ondrop = (e) => {
+            e.preventDefault();
+            dropZone.classList.remove('dragover');
+            handlefiles(e.dataTransfer.files);
+        };
+        fileInput.onchange = () => handlefiles(fileInput.files);
 
-                // Emails
-                if (results.emails && results.emails.length > 0) {
-                    const section = createResultSection('Emails', results.emails);
-                    sectionsContainer.appendChild(section);
-                }
-
-                // Usernames
-                if (results.usernames && Object.keys(results.usernames).length > 0) {
-                    const seteUsernameSection('Usernames', results.usernames);
-                    sectionsContainer.appendChild(section);
-                }
-
-                // Breaches
-                if (results.breaches && results.breaches.length > 0) {
-                    const section = createBreachSection('Data Breaches', results.breaches);
-                    sectionsContainer.appendChild(section);
-                }
-   / Show download buttons
-                if (reports) {
-                    const jsonBtn = document.getElementById('download-json');
-                    const htmlBtn = document.getElementById('download-html');
-
-                    if (reports.json) {
-                        jsonBtn.style.display = 'inline-block';
-                        jsonBtn.onclick = () => downloadReport(reports.json);
-                    }
-
-                    if (reports.html) {
-                        htmlBtn.style.display = 'inline-block';
-                        htmlBtn.onclick = () => downloadReport(reports.html);
-                    }
-                }
+        async function handlefiles(files) {
+            const formData = new FormData();
+            let count = 0;
+            for(let i=0; i<files.length; i++) {
+                formData.append('files', files[i]);
+                count++;
             }
+            
+            if(count === 0) return;
 
-            function createResultSection(title, items) {
-                const section = document.createElement('div');
-                section.className = 'results-section';
-                section.innerHTML = `
-                <h3>${title}</h3>
-                <ul class="data-list">
-                    ${items.map(item => `<li>${item}</li>`).join('')}
-                </ul>
-            `;
-                return section;
-            }
-
-            function createUsernameSection(title, usernames) {
-                const section = document.createElement('div');
-                section.className = 'results-section';
-
-                const rows = Object.entries(usernames)
-                    .map(([platform, username]) => `
-                    <tr>
-                        <td>${platform}</td>
-                        <td>${username}</td>
-                    </tr>
-                `).join('');
-
-                section.innerHTML = `
-                <h3>${title}</h3>
-                <table class="data-table">
-                    <thead>
-                        <tr>
-                            <th>Platform</th>
-                            <th>Username</th>
-                        </tr>
-                    </thead>
-                    <tbody>
-                        ${rows}
-                    </tbody>
-                </table>
-            `;
-                return section;
-            }
-
-            function createBreachSection(title, breaches) {
-                const section = document.createElement('div');
-                section.className = 'results-section';
-
-                const rows = breaches.map(breach => `
-                <tr>
-                    <td>${breach.name || 'Unknown'}</td>
-                    <td>${breach.date || 'Unknown'}</td>
-                    <td>${(breach.data_classes || []).join(', ')}</td>
-                </tr>
-            `).join('');
-
-                section.innerHTML = `
-                <h3>${title}</h3>
-                <table class="data-table">
-                    <thead>
-                        <tr>
-                            <th>Breach Name</th>
-                            <th>Date</th>
-                            <th>Compromised Data</th>
-                        </tr>
-                    </thead>
-                    <tbody>
-                        ${rows}
-                    </tbody>
-                </table>
-            `;
-                return section;
-            }
-
-            function downloadReport(filePath) {
-                const filename = filePath.split('\\').pop().split('/').pop();
-                window.location.href = `/api/reports/${filename}`;
-            }
-        </script>
-        <!-- Jarvis Overlay -->
-        <div id="jarvis-overlay" style="position: fixed; bottom: 30px; right: 30px; z-index: 1000; text-align: center;">
-            <div id="jarvis-status"
-                style="background: rgba(0,0,0,0.8); color: cyan; padding: 5px 10px; border-radius: 5px; margin-bottom: 10px; display: none;">
-                Listening...</div>
-            <button id="jarvis-btn"
-                style="width: 70px; height: 70px; border-radius: 50%; border: none; background: radial-gradient(circle, #00f2ea 0%, #000 100%); box-shadow: 0 0 20px #00f2ea; cursor: pointer; transition: transform 0.2s;">
-                <i class="fas fa-microphone" style="font-size: 24px; color: white;"></i>
-            </button>
-        </div>
-
-        <script>
-            // ... (Existing Socket/UI code) ...
-
-            // JARVIS LOGIC
-            const jarvisBtn = document.getElementById('jarvis-btn');
-            const jarvisStatus = document.getElementById('jarvis-status');
-            let isListening = false;
-
-            // Speech Recognition Setup
-            const SpeechRecognition = window.SpeechRecognition || window.webkitSpeechRecognition;
-            const recognition = new SpeechRecognition();
-            recognition.continuous = false;
-            recognition.lang = 'en-IN'; // Hinglish friendly
-            recognition.interimResults = false;
-
-            // Speech Synthesis Setup
-            const synth = window.speechSynthesis;
-
-            function speak(text) {
-                if (synth.speaking) {
-                    console.error('speechSynthesis.speaking');
-                    return;
-                }
-                const utterThis = new SpeechSynthesisUtterance(text);
-                utterThis.pitch = 1;
-                utterThis.rate = 1;
-                synth.speak(utterThis);
-            }
-
-            jarvisBtn.onclick = () => {
-                if (!isListening) {
-                    recognition.start();
-                    isListening = true;
-                    jarvisStatus.style.display = 'block';
-                    jarvisBtn.style.transform = "scale(1.1)";
-                    jarvisBtn.style.boxShadow = "0 0 40px #00f2ea";
+            logFeed(`Uploading ${count} files...`, "info");
+            try {
+                const res = await fetch('/api/upload', { method: 'POST', body: formData });
+                const d = await res.json();
+                if(d.success) {
+                    logFeed(d.message, "success");
+                    updateFileList(); // Refresh list immediately
                 } else {
-                    recognition.stop();
-                    isListening = false;
-                    jarvisStatus.style.display = 'none';
-                    jarvisBtn.style.transform = "scale(1)";
-                    jarvisBtn.style.boxShadow = "0 0 20px #00f2ea";
+                    logFeed("Upload failed: " + d.error, "error");
                 }
-            };
+            } catch(e) { logFeed("Upload error: " + e, "error"); }
+        }
 
-            recognition.onresult = async (event) => {
-                const transcript = event.results[0][0].transcript;
-                console.log('You said: ' + transcript);
-                jarvisStatus.innerText = "Processing: " + transcript;
+        /* --- FILE LIST POLLING --- */
+        function startFilePolling() {
+            updateFileList();
+            setInterval(updateFileList, 5000); // Check every 5s
+        }
 
-                try {
-                    const response = await fetch('/api/jarvis/chat', {
-                        method: 'POST',
-                        headers: { 'Content-Type': 'application/json' },
-                        body: JSON.stringify({ message: transcript })
+        async function updateFileList() {
+            try {
+                const res = await fetch('/api/uploads');
+                const data = await res.json();
+                if(data.success) {
+                    const list = document.getElementById('file-list');
+                    list.innerHTML = '';
+                    
+                    if(data.files.length === 0) {
+                        list.innerHTML = '<div style="padding:10px; color:var(--text-muted); text-align:center;">No files ingested.</div>';
+                        return;
+                    }
+
+                    data.files.forEach(f => {
+                        let icon = 'fa-file';
+                        let statusClass = 'status-pending';
+                        let statusIcon = 'fa-clock';
+                        
+                        if(f.status === 'analyzed') {
+                            statusClass = 'status-analyzed';
+                            statusIcon = 'fa-check-circle';
+                        } else if(f.status === 'failed') {
+                            statusClass = 'status-failed';
+                            statusIcon = 'fa-exclamation-triangle';
+                        }
+
+                        const item = document.createElement('div');
+                        item.className = 'file-item';
+                        item.innerHTML = `
+                            <div style="display:flex; align-items:center; gap:10px;">
+                                <i class="fas ${icon} style="color:var(--primary);"></i>
+                                <div>
+                                    <div style="font-weight:600;">${f.name}</div>
+                                    <div style="font-size:0.75em; color:var(--text-muted);">${f.size} KB</div>
+                                </div>
+                            </div>
+                            <div class="file-status ${statusClass}">
+                                <i class="fas ${statusIcon}"></i> ${f.status.toUpperCase()}
+                            </div>
+                        `;
+                        list.appendChild(item);
                     });
-                    const data = await response.json();
+                }
+            } catch(e) { console.error("Polling error", e); }
+        }
 
-                    if (data.success) {
-                        const result = data.data;
+        /* --- LIVE FEED LOGIC --- */
+        function logFeed(msg, type="info") {
+            const feed = document.getElementById('live-feed');
+            const item = document.createElement('div');
+            item.className = `feed-item feed-${type}`;
+            const time = new Date().toLocaleTimeString();
+            item.innerHTML = `<span style="opacity:0.5">[${time}]</span> ${msg}`;
+            feed.insertBefore(item, feed.firstChild);
+        }
 
-                        if (result.type === 'chat') {
-                            speak(result.response);
-                            jarvisStatus.innerText = "Jarvis: " + result.response.substring(0, 30) + "...";
-                        }
-                        else if (result.type === 'action' && result.action === 'scan') {
-                            speak(result.response);
-                            document.getElementById('target').value = result.target;
-                            document.getElementById('start-scan').click(); // Auto-click
-                        }
-                        else if (result.type === 'action' && result.action === 'code') {
-                            speak(result.response);
-                            alert("Code generated: " + result.filename);
+        /* --- SCAN LOGIC --- */
+        document.getElementById('start-scan').onclick = async () => {
+            const target = document.getElementById('target').value;
+            if(!target) { alert("Target required."); return; }
+            if(activeModules.size === 0) { alert("Select at least one module."); return; }
+
+            document.getElementById('start-scan').disabled = true;
+            document.getElementById('scan-progress').style.display = 'block';
+            document.getElementById('status-text').style.display = 'block';
+            
+            logFeed(`Starting operation on ${target}...`, "info");
+
+            try {
+                const res = await fetch('/api/scan', {
+                    method: 'POST',
+                    headers: {'Content-Type': 'application/json'},
+                    body: JSON.stringify({
+                        target: target,
+                        modules: Array.from(activeModules),
+                        use_intelligence: true
+                    })
+                });
+                const d = await res.json();
+                if(!d.success) {
+                    logFeed("Scan Start Failed: " + d.error, "error");
+                    document.getElementById('start-scan').disabled = false;
+                }
+            } catch(e) {
+                 logFeed("Network Error: " + e, "error");
+                 document.getElementById('start-scan').disabled = false;
+            }
+        };
+
+        socket.on('scan_update', (data) => {
+            const bar = document.getElementById('progress-bar');
+            const txt = document.getElementById('status-text');
+            
+            if(data.progress) bar.style.width = data.progress + "%";
+            if(data.message) {
+                txt.textContent = data.message;
+                // Only log major updates to feed to avoid spam
+                if(data.status === 'completed' || data.status === 'failed' || data.progress % 20 === 0) {
+                     logFeed(data.message, data.status === 'failed' ? 'error' : 'info');
+                }
+            }
+
+            if(data.status === 'completed') {
+                document.getElementById('start-scan').disabled = false;
+                renderResults(data);
+                logFeed("Operation Completed Successfully.", "success");
+            }
+        });
+
+        function renderResults(data) {
+            const area = document.getElementById('results-area');
+            area.style.display = 'block';
+            const content = document.getElementById('results-content');
+            
+            // Simple JSON dump for now, can be beautified later
+            content.innerHTML = `
+                <div style="display:grid; grid-template-columns: repeat(4, 1fr); gap:10px; margin-bottom:20px;">
+                    <div style="background:rgba(255,255,255,0.05); padding:15px; border-radius:8px; text-align:center;">
+                        <h3>Emails</h3>
+                        <div style="font-size:1.5rem; font-weight:bold; color:var(--accent);">${data.summary.emails}</div>
+                    </div>
+                    <div style="background:rgba(255,255,255,0.05); padding:15px; border-radius:8px; text-align:center;">
+                        <h3>Usernames</h3>
+                        <div style="font-size:1.5rem; font-weight:bold; color:var(--accent);">${data.summary.usernames}</div>
+                    </div>
+                    <div style="background:rgba(255,255,255,0.05); padding:15px; border-radius:8px; text-align:center;">
+                        <h3>Breaches</h3>
+                        <div style="font-size:1.5rem; font-weight:bold; color:var(--danger);">${data.summary.breaches}</div>
+                    </div>
+                    <div style="background:rgba(255,255,255,0.05); padding:15px; border-radius:8px; text-align:center;">
+                         <h3>Domains</h3>
+                        <div style="font-size:1.5rem; font-weight:bold; color:var(--success);">${data.summary.domains}</div>
+                    </div>
+                </div>
+                <pre style="background:black; padding:15px; border-radius:8px; overflow:auto; max-height:400px; font-size:0.8rem;">${JSON.stringify(data.results, null, 2)}</pre>
+            `;
+        }
+
+        /* --- JARVIS --- */
+        function toggleJarvis() {
+            // minimal collapse logic if needed
+        }
+
+        document.getElementById('jarvis-send').onclick = sendJarvis;
+        document.getElementById('jarvis-input').onkeypress = (e) => { if(e.key==='Enter') sendJarvis(); };
+
+        async function sendJarvis() {
+            const inp = document.getElementById('jarvis-input');
+            const txt = inp.value.trim();
+            if(!txt) return;
+
+            addChat(txt, 'user');
+            inp.value = '';
+
+            try {
+                const res = await fetch('/api/jarvis/chat', {
+                    method: 'POST',
+                    headers: {'Content-Type': 'application/json'},
+                    body: JSON.stringify({message: txt})
+                });
+                const d = await res.json();
+                if(d.success) {
+                    addChat(d.data.response, 'jarvis');
+                    if(d.data.action === 'scan') {
+                        document.getElementById('target').value = d.data.target;
+                        // Auto-select modules from d.data.modules
+                        if(d.data.modules) {
+                             // clear
+                             activeModules.clear();
+                             document.querySelectorAll('.module-card').forEach(c => c.classList.remove('selected'));
+                             
+                             d.data.modules.forEach(mKey => {
+                                 // Check if we have this module rendered
+                                 // This is a bit tricky since we dynamically render. 
+                                 // We'll just rely on the 'allModulesData' and re-render or find specific elements?
+                                 // Simpler: Find by text content of card? No.
+                                 // Correct way: Add ID to module cards?
+                                 // Let's just emulate clicks or use activeModules set directly if we re-render?
+                                 // Actually simpler: Just set activeModules and visually update if possible.
+                                 activeModules.add(mKey);
+                             });
+                             // Re-render to show selection
+                             if(Object.keys(allModulesData).length > 0) renderModules(allModulesData); 
                         }
                     }
-                } catch (e) {
-                    console.error(e);
-                    speak("I encountered an error connecting to my brain.");
                 }
+            } catch(e) { addChat("Error: "+e, 'jarvis'); }
+        }
 
-                isListening = false;
-                jarvisStatus.style.display = 'none';
-                jarvisBtn.style.transform = "scale(1)";
-            };
+        function addChat(text, sender) {
+            const box = document.getElementById('jarvis-chat');
+            const msg = document.createElement('div');
+            msg.className = `chat-msg msg-${sender}`;
+            msg.innerHTML = text.replace(/\n/g, '<br>');
+            box.appendChild(msg);
+            box.scrollTop = box.scrollHeight;
+        }
 
-            recognition.onerror = (event) => {
-                console.error('Speech recognition error detected: ' + event.error);
-                isListening = false;
-                jarvisStatus.style.display = 'none';
-            };
-        </script>
+    </script>
 </body>
-
 </html>
