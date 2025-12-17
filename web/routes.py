@@ -135,7 +135,6 @@ def check_service_status():
     """
     try:
         import requests
-        from modules import *
         
         services = []
         
