@@ -11,7 +11,7 @@ lxml>=4.9.3
 
 # OSINT libraries
 sherlock-project>=0.14.3
-holehe>=1.66
+holehe>=1.61
 socialscan>=1.4.2
 
 # Web interface
