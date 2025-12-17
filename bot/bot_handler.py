@@ -440,14 +440,7 @@ Example: `/deepscan johndoe 2`
         modules: list,
         use_intelligence: bool
     ):
-        """Start a background scan.
-        
-        Args:
-            update: Telegram update
-            target: Target to scan
-            modules: List of modules to use
-            use_intelligence: Enable intelligence analysis
-        """
+        """Start a background scan."""
         user_id = update.effective_user.id
         target_type = detect_target_type(target)
         
@@ -462,97 +455,83 @@ Example: `/deepscan johndoe 2`
         # Mark as active
         self.active_scans[user_id] = {'target': target, 'type': 'standard'}
         
-        # Run in background thread
-        thread = threading.Thread(
-            target=self._run_scan_background,
-            args=(update, target, modules, use_intelligence)
-        )
-        thread.daemon = True
-        thread.start()
+        # Run in executor to avoid blocking the bot loop
+        import asyncio
+        loop = asyncio.get_running_loop()
         
-        logger.info(f"User {user_id} started scan on {target}")
-    
-    def _run_scan_background(
-        self,
-        update: Update,
-        target: str,
-        modules: list,
-        use_intelligence: bool
-    ):
-        """Run scan in background thread."""
-        user_id = update.effective_user.id
+        # We start the blocking task in a thread executor, then await its result
+        # However, we want to send updates *after* it triggers, which makes it complex.
+        # Simpler: fire and forget task that sends updates via a threadsafe callback?
+        # Or just await the whole thing if we don't need intermediate progress updates in the bot.
+        # User asked for Updates.
+        
+        # Correct pattern: Define a wrapper that runs blocking code, then returns result.
+        # Await that wrapper. Then send message.
         
         try:
-            # Run scan
-            engine = AthenaEngine(
-                target_query=target,
-                use_intelligence=use_intelligence,
-                quiet=True
+            logger.info(f"User {user_id} started scan on {target}")
+            
+            # Run blocking engine scan in default executor
+            result_summary, report_name, profile = await loop.run_in_executor(
+                None, 
+                self._run_scan_blocking, 
+                target, 
+                modules, 
+                use_intelligence
             )
             
-            engine.run_scan(modules)
-            
-            # Generate report
-            json_report = engine.generate_report('json')
-            
-            # Get summary
-            summary = engine.profile.get_summary()
-            
-            # Send results
+            # Send results (Now we are back in async main thread)
             message = f"""
 ✅ **Scan Complete!**
 
 🎯 Target: `{target}`
 
 📊 **Results:**
-• Emails: {summary['emails']}
-• Usernames: {summary['usernames']}
-• Phone Numbers: {summary['phone_numbers']}
-• Domains: {summary['domains']}
-• Breaches: {summary['breaches']}
-• IPs: {summary['related_ips']}
+• Emails: {result_summary['emails']}
+• Usernames: {result_summary['usernames']}
+• Phone Numbers: {result_summary['phone_numbers']}
+• Domains: {result_summary['domains']}
+• Breaches: {result_summary['breaches']}
+• IPs: {result_summary['related_ips']}
 
-📄 Report saved: `{json_report.name}`
+📄 Report saved: `{report_name}`
 
-⏱️ Scan duration: {engine.profile.scan_duration:.2f}s
-            """
+⏱️ Scan duration: {profile.scan_duration:.2f}s
+"""
+            await update.message.reply_text(message, parse_mode='Markdown')
             
-            # Send message using asyncio
-            import asyncio
-            asyncio.run(update.message.reply_text(message, parse_mode='Markdown'))
-            
-            # Send detailed results if small enough
-            if summary['emails'] > 0 and summary['emails'] <= 10:
-                emails_text = "\n".join([f"• {email}" for email in engine.profile.emails])
-                asyncio.run(update.message.reply_text(
-                    f"📧 **Email Addresses:**\n{emails_text}",
-                    parse_mode='Markdown'
-                ))
-            
-            if summary['breaches'] > 0 and summary['breaches'] <= 5:
-                breaches_text = "\n".join([
-                    f"• {b.get('name', 'Unknown')} ({b.get('date', 'Unknown')})"
-                    for b in engine.profile.breaches
-                ])
-                asyncio.run(update.message.reply_text(
-                    f"⚠️ **Data Breaches:**\n{breaches_text}",
-                    parse_mode='Markdown'
-                ))
-            
-            logger.info(f"Scan completed for user {user_id}")
-        
+             # Send detailed results if small enough
+            if result_summary['emails'] > 0 and result_summary['emails'] <= 10:
+                emails_text = "\n".join([f"• {email}" for email in profile.emails])
+                await update.message.reply_text(f"📧 **Email Addresses:**\n{emails_text}", parse_mode='Markdown')
+
+            if result_summary['breaches'] > 0 and result_summary['breaches'] <= 5:
+                breaches_text = "\n".join([f"• {b.get('name', 'Unknown')}" for b in profile.breaches])
+                await update.message.reply_text(f"⚠️ **Data Breaches:**\n{breaches_text}", parse_mode='Markdown')
+
         except Exception as e:
             logger.error(f"Scan failed for user {user_id}: {e}")
-            import asyncio
-            asyncio.run(update.message.reply_text(
-                f"❌ Scan failed: {str(e)}",
-                parse_mode='Markdown'
-            ))
-        
+            await update.message.reply_text(f"❌ Scan failed: {str(e)}", parse_mode='Markdown')
+
         finally:
-            # Remove from active scans
             if user_id in self.active_scans:
                 del self.active_scans[user_id]
+
+
+    def _run_scan_blocking(self, target, modules, use_intelligence):
+        """Blocking worker for the engine."""
+        engine = AthenaEngine(
+            target_query=target,
+            use_intelligence=use_intelligence,
+            quiet=True
+        )
+        engine.run_scan(modules)
+        json_report = engine.generate_report('json')
+        summary = engine.profile.get_summary()
+        return summary, json_report.name, engine.profile
+
+    # Kept for compatibility if called elsewhere but not used in new flow
+    def _run_scan_background(self): pass
     
     def _run_deep_scan_background(self, update: Update, target: str, depth: int):
         """Run deep scan in background thread."""

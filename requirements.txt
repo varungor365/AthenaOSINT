@@ -4,9 +4,26 @@ colorama>=0.4.6
 python-dotenv>=1.0.0
 tabulate>=0.9.0
 
-# HTTP and web scraping
-requests>=2.31.0
-beautifulsoup4>=4.12.2
+# HTTP flask
+flask-socketio
+psutil
+loguru
+requests
+python-dotenv
+beautifulsoup4
+cryptography
+boto3
+google-api-python-client
+google-auth-httplib2
+google-auth-oauthlib
+llama-index
+llama-index-core
+llama-index-llms-openai
+pyautogen
+scrapegraphai
+playwright
+ragas
+datasets>=4.12.2
 lxml>=4.9.3
 
 # OSINT libraries

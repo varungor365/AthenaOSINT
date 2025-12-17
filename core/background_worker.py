@@ -59,12 +59,25 @@ class BackgroundWorker(threading.Thread):
                     logger.info(f"  └─ Extracted {len(data)} entities. Learning...")
                     for item in data:
                         self.memory.store_entity(
-                            type=item['type'],
                             value=item['value'],
                             source=item['source'],
                             context=item.get('context', ''),
                             confidence=1.0 # Self-uploaded data is high confidence
                         )
+                        
+                        # 2.1. SELF-LEARNING TRIGGER (Autonomous Deep Check)
+                        # If we find a new Email, we recursively scan it to gather MORE data.
+                        if item['type'] == 'email' and self.running:
+                            logger.info(f"  [Auto-Learning] Discovered new target: {item['value']}. Queuing deep check...")
+                            self._trigger_recursive_scan(item['value'])
+
+                # 2.5 LlamaIndex Ingestion (Searchable Knowledge)
+                try:
+                    from intelligence.store import IntelligenceStore
+                    store = IntelligenceStore()
+                    store.ingest_document(str(file_path))
+                except Exception as le:
+                    logger.error(f"LlamaIndex Ingestion Failed: {le}")
                 
                 # 3. Archive (Move to processed)
                 dest_path = PROCESSED_DIR / file_path.name
@@ -83,6 +96,31 @@ class BackgroundWorker(threading.Thread):
             except Exception as e:
                 logger.error(f"  └─ Failed to process {file_path.name}: {e}")
                 shutil.move(str(file_path), str(FAILED_DIR / file_path.name))
+
+    def _trigger_recursive_scan(self, target):
+        """
+        Launch a background scan on a newly discovered target.
+        This fulfils the 'Self-Learning' ecosystem requirement.
+        """
+        try:
+            # Avoid circular imports by importing within method
+            from core.engine import AthenaEngine
+            
+            # Run in a separate thread to not block the ingestion loop
+            def _scan_task():
+                try:
+                    logger.info(f">>> [Deep Check] Starting autonomous scan on {target}")
+                    engine = AthenaEngine(target_query=target, quiet=True)
+                    # We run a 'comprehensive' set of modules
+                    engine.run_scan(['sherlock', 'holehe', 'leak_checker', 'smart_scraper'])
+                    logger.success(f"<<< [Deep Check] Autonomous scan on {target} complete.")
+                except Exception as e:
+                    logger.error(f"Autonomous scan failed: {e}")
+
+            threading.Thread(target=_scan_task, daemon=True).start()
+            
+        except Exception as e:
+            logger.error(f"Failed to trigger recursive scan: {e}")
 
     def stop(self):
         self.running = False

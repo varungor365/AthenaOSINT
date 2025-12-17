@@ -158,6 +158,20 @@ MODULE_REGISTRY = {
         'risk': 'high',
         'emoji': '🔦'
     },
+    'smart_scraper': {
+        'category': 'scraper',
+        'description': 'AI-Powered Deep Web Scraper (ScrapeGraphAI)',
+        'type': 'active',
+        'risk': 'medium',
+        'emoji': '🕷️'
+    },
+    'breach_harvester': {
+        'category': 'harvest',
+        'description': 'Autonomous Database Downloader',
+        'type': 'active',
+        'risk': 'high',
+        'emoji': '📥'
+    },
     'torbot': {
         'category': 'Dark Web',
         'desc': 'Crawl .onion links to map structure',

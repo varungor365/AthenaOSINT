@@ -98,10 +98,67 @@ Do not allow dangerous system commands outside of the defined scopes.
                  "modules": modules_to_run,
                  "response": f"Initializing scan on {target} ({target_type}). Selected {len(modules_to_run)} relevant modules."
             }
+        
+        # 2.5. AutoGen Trigger (Async Background Task)
+        elif user_text.startswith('/team ') or user_text.lower().startswith('investigate '):
+            objective = user_text.replace('/team ', '').replace('investigate ', '').strip()
+            
+            # Start in background thread
+            import threading
+            def run_team_task(obj):
+                try:
+                    from intelligence.autogen_wrapper import MultiAgentSystem
+                    # Need socketio here to emit updates? 
+                    # Ideally, MultiAgentSystem should emit events or we capture output.
+                    # For now, we block this thread (not main thread) and return final result via socket.
+                    # BUT Jarvis returns immediate response.
+                     # We'll just return a "Started" message and let the user know.
+                    pass 
+                except:
+                    pass
 
-        # 3. CHAT (Conversational Fallback)
+            # Update: To truly support async, we should return a "Task Started" message immediately
+            # and let the backend push the result later.
+            
+            # Define wrapper to run and emit
+            def _background_investigation(obj):
+                 try:
+                    from web.routes import socketio # Import here to avoid circular
+                    from intelligence.autogen_wrapper import MultiAgentSystem
+                    
+                    socketio.emit('chat_message', {'sender': 'Jarvis', 'text': f"🚀 **Team Deployed**: Investigating '{obj}'..."})
+                    
+                    mas = MultiAgentSystem()
+                    result = mas.run_investigation(obj)
+                    
+                    socketio.emit('chat_message', {'sender': 'Jarvis', 'text': f"✅ **Team Report** for '{obj}':\n\n{result}"})
+                 except Exception as e:
+                    from web.routes import socketio
+                    socketio.emit('chat_message', {'sender': 'Jarvis', 'text': f"❌ **Team Error**: {e}"})
+
+            thread = threading.Thread(target=_background_investigation, args=(objective,))
+            thread.daemon = True
+            thread.start()
+            
+            return {
+                "type": "chat",
+                "response": f"I have dispatched the autonomous research team to investigate '{objective}'. You can continue working while they report back."
+            }
+
+        # 3. CHAT (Conversational Fallback + RAG)
         try:
-            # Use the LLM to generate a response
+            # Check LlamaIndex first
+            from intelligence.store import IntelligenceStore
+            store = IntelligenceStore()
+            knowledge_answer = store.query(user_text)
+            
+            if "simply cannot recall" not in knowledge_answer:
+                 return {
+                    "type": "chat",
+                    "response": f"[Knowledge Base] {knowledge_answer}"
+                }
+            
+            # Fallback to LLM
             prompt = f"User input: {user_text}\nAnswer as Jarvis (helpful, cyber-security expert persona)."
             response = self.llm.generate_text(prompt, system_prompt=self.system_prompt)
             

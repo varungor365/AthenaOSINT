@@ -1,5 +1,6 @@
 <!DOCTYPE html>
 <html lang="en">
+
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
@@ -7,14 +8,17 @@
     <script src="https://cdn.socket.io/4.5.4/socket.io.min.js"></script>
     <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.min.js"></script>
     <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css" rel="stylesheet">
-    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;600;700&family=JetBrains+Mono:wght@400;700&display=swap" rel="stylesheet">
+    <link
+        href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;600;700&family=JetBrains+Mono:wght@400;700&display=swap"
+        rel="stylesheet">
     <style>
         :root {
             --bg-dark: #0f1115;
             --bg-panel: rgba(30, 32, 40, 0.7);
             --primary: #6366f1;
             --primary-glow: rgba(99, 102, 241, 0.4);
-            --accent: #22d3ee; /* Cyan */
+            --accent: #22d3ee;
+            /* Cyan */
             --accent-glow: rgba(34, 211, 238, 0.4);
             --text-main: #e2e8f0;
             --text-muted: #94a3b8;
@@ -24,12 +28,16 @@
             --border: rgba(255, 255, 255, 0.1);
         }
 
-        * { margin: 0; padding: 0; box-sizing: border-box; }
-        
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
         body {
             font-family: 'Inter', sans-serif;
             background-color: var(--bg-dark);
-            background-image: 
+            background-image:
                 radial-gradient(circle at 10% 20%, rgba(99, 102, 241, 0.1) 0%, transparent 20%),
                 radial-gradient(circle at 90% 80%, rgba(34, 211, 238, 0.1) 0%, transparent 20%);
             color: var(--text-main);
@@ -82,7 +90,11 @@
             align-items: center;
             gap: 10px;
         }
-        .logo i { color: var(--accent); text-shadow: 0 0 10px var(--accent-glow); }
+
+        .logo i {
+            color: var(--accent);
+            text-shadow: 0 0 10px var(--accent-glow);
+        }
 
         .nav-item {
             display: flex;
@@ -96,8 +108,10 @@
             margin-bottom: 5px;
             cursor: pointer;
         }
-        .nav-item:hover, .nav-item.active {
-            background: rgba(255,255,255,0.05);
+
+        .nav-item:hover,
+        .nav-item.active {
+            background: rgba(255, 255, 255, 0.05);
             color: white;
             border-left: 3px solid var(--primary);
         }
@@ -110,20 +124,35 @@
             margin-bottom: 20px;
             box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1);
         }
-        
-        h2 { font-size: 1.1rem; color: white; margin-bottom: 15px; display: flex; align-items: center; gap: 8px; }
-        h3 { font-size: 0.9rem; color: var(--text-muted); text-transform: uppercase; letter-spacing: 0.05em; margin-bottom: 10px; }
+
+        h2 {
+            font-size: 1.1rem;
+            color: white;
+            margin-bottom: 15px;
+            display: flex;
+            align-items: center;
+            gap: 8px;
+        }
+
+        h3 {
+            font-size: 0.9rem;
+            color: var(--text-muted);
+            text-transform: uppercase;
+            letter-spacing: 0.05em;
+            margin-bottom: 10px;
+        }
 
         /* --- SCAN INPUT --- */
         .scan-input-container {
             position: relative;
             margin-bottom: 30px;
         }
+
         .scan-input {
             width: 100%;
             padding: 18px 20px;
             padding-left: 55px;
-            background: rgba(0,0,0,0.3);
+            background: rgba(0, 0, 0, 0.3);
             border: 2px solid var(--border);
             border-radius: 12px;
             color: white;
@@ -131,11 +160,13 @@
             font-family: 'JetBrains Mono', monospace;
             transition: border-color 0.3s, box-shadow 0.3s;
         }
+
         .scan-input:focus {
             outline: none;
             border-color: var(--primary);
             box-shadow: 0 0 20px var(--primary-glow);
         }
+
         .scan-icon {
             position: absolute;
             left: 20px;
@@ -149,9 +180,10 @@
         .module-category {
             margin-bottom: 15px;
         }
+
         .module-header {
             padding: 10px 15px;
-            background: rgba(255,255,255,0.03);
+            background: rgba(255, 255, 255, 0.03);
             border-radius: 8px;
             cursor: pointer;
             display: flex;
@@ -159,18 +191,26 @@
             align-items: center;
             user-select: none;
         }
-        .module-header:hover { background: rgba(255,255,255,0.06); }
+
+        .module-header:hover {
+            background: rgba(255, 255, 255, 0.06);
+        }
+
         .module-grid {
             display: grid;
             grid-template-columns: repeat(auto-fill, minmax(200px, 1fr));
             gap: 10px;
             padding: 10px 0;
-            display: none; /* Hidden by default */
+            display: none;
+            /* Hidden by default */
         }
-        .module-grid.active { display: grid; }
-        
+
+        .module-grid.active {
+            display: grid;
+        }
+
         .module-card {
-            background: rgba(0,0,0,0.2);
+            background: rgba(0, 0, 0, 0.2);
             border: 1px solid var(--border);
             border-radius: 8px;
             padding: 12px;
@@ -179,11 +219,17 @@
             position: relative;
             overflow: hidden;
         }
-        .module-card:hover { border-color: var(--primary); transform: translateY(-2px); }
+
+        .module-card:hover {
+            border-color: var(--primary);
+            transform: translateY(-2px);
+        }
+
         .module-card.selected {
             background: rgba(99, 102, 241, 0.1);
             border-color: var(--primary);
         }
+
         .module-card.selected::after {
             content: '✓';
             position: absolute;
@@ -192,9 +238,24 @@
             color: var(--primary);
             font-weight: bold;
         }
-        .mod-icon { font-size: 1.5rem; margin-bottom: 5px; display: block; }
-        .mod-name { font-weight: 600; font-size: 0.9rem; }
-        .mod-desc { font-size: 0.75rem; color: var(--text-muted); line-height: 1.2; margin-top: 4px; }
+
+        .mod-icon {
+            font-size: 1.5rem;
+            margin-bottom: 5px;
+            display: block;
+        }
+
+        .mod-name {
+            font-weight: 600;
+            font-size: 0.9rem;
+        }
+
+        .mod-desc {
+            font-size: 0.75rem;
+            color: var(--text-muted);
+            line-height: 1.2;
+            margin-top: 4px;
+        }
 
         /* --- BUTTONS --- */
         .btn {
@@ -208,20 +269,31 @@
             align-items: center;
             gap: 8px;
         }
+
         .btn-primary {
             background: linear-gradient(135deg, var(--primary), #818cf8);
             color: white;
             box-shadow: 0 4px 15px var(--primary-glow);
         }
-        .btn-primary:hover { transform: translateY(-2px); box-shadow: 0 6px 20px var(--primary-glow); }
-        .btn-primary:active { transform: translateY(0); }
-        
+
+        .btn-primary:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 6px 20px var(--primary-glow);
+        }
+
+        .btn-primary:active {
+            transform: translateY(0);
+        }
+
         .btn-accent {
             background: rgba(34, 211, 238, 0.1);
             color: var(--accent);
             border: 1px solid var(--accent);
         }
-        .btn-accent:hover { background: rgba(34, 211, 238, 0.2); }
+
+        .btn-accent:hover {
+            background: rgba(34, 211, 238, 0.2);
+        }
 
         /* --- UPLOAD ZONE --- */
         .upload-zone {
@@ -230,33 +302,58 @@
             padding: 30px;
             text-align: center;
             transition: all 0.3s;
-            background: rgba(0,0,0,0.2);
+            background: rgba(0, 0, 0, 0.2);
             cursor: pointer;
         }
-        .upload-zone:hover, .upload-zone.dragover {
+
+        .upload-zone:hover,
+        .upload-zone.dragover {
             border-color: var(--accent);
             background: rgba(34, 211, 238, 0.05);
         }
-        .upload-icon { font-size: 2rem; color: var(--text-muted); margin-bottom: 10px; }
-        
+
+        .upload-icon {
+            font-size: 2rem;
+            color: var(--text-muted);
+            margin-bottom: 10px;
+        }
+
         /* --- FILE LIST --- */
         .file-list {
             list-style: none;
             max-height: 300px;
             overflow-y: auto;
         }
+
         .file-item {
             display: flex;
             align-items: center;
             justify-content: space-between;
             padding: 10px;
-            border-bottom: 1px solid rgba(255,255,255,0.05);
+            border-bottom: 1px solid rgba(255, 255, 255, 0.05);
             font-size: 0.85rem;
         }
-        .file-status { font-size: 0.75rem; padding: 2px 6px; border-radius: 4px; }
-        .status-pending { background: rgba(245, 158, 11, 0.2); color: var(--warning); }
-        .status-analyzed { background: rgba(16, 185, 129, 0.2); color: var(--success); }
-        .status-failed { background: rgba(239, 68, 68, 0.2); color: var(--danger); }
+
+        .file-status {
+            font-size: 0.75rem;
+            padding: 2px 6px;
+            border-radius: 4px;
+        }
+
+        .status-pending {
+            background: rgba(245, 158, 11, 0.2);
+            color: var(--warning);
+        }
+
+        .status-analyzed {
+            background: rgba(16, 185, 129, 0.2);
+            color: var(--success);
+        }
+
+        .status-failed {
+            background: rgba(239, 68, 68, 0.2);
+            color: var(--danger);
+        }
 
         /* --- LIVE FEED --- */
         .feed-container {
@@ -270,36 +367,60 @@
             border-radius: 8px;
             border: 1px solid var(--border);
         }
-        .feed-item { margin-bottom: 5px; border-left: 2px solid transparent; padding-left: 5px; }
-        .feed-info { border-color: var(--primary); color: #a5b4fc; }
-        .feed-success { border-color: var(--success); color: #6ee7b7; }
-        .feed-error { border-color: var(--danger); color: #fca5a5; }
 
-        /* --- CHAT OVERLAY (Floating) --- */
-        .jarvis-widget {
+        .feed-item {
+            margin-bottom: 5px;
+            border-left: 2px solid transparent;
+            padding-left: 5px;
+        }
+
+        .feed-info {
+            border-color: var(--primary);
+            color: #a5b4fc;
+        }
+
+        .feed-success {
+            border-color: var(--success);
+            color: #6ee7b7;
+        }
+
+        .feed-error {
+            border-color: var(--danger);
+            color: #fca5a5;
+        }
+
+        /* --- CHAT OVERLAY        /* Jarvis Chat Widget */
+        #jarvis-widget {
             position: fixed;
             bottom: 20px;
-            right: 380px; /* Left of the data panel */
+            right: 20px;
             width: 350px;
-            height: 500px; /* Increased default height */
-            background: rgba(20, 20, 25, 0.95);
+            height: 500px;
+            background: rgba(17, 24, 39, 0.95);
             border: 1px solid var(--primary);
-            border-radius: 12px;
+            border-radius: 10px;
+            box-shadow: 0 0 20px rgba(0, 0, 0, 0.5);
             display: flex;
             flex-direction: column;
-            box-shadow: 0 10px 30px rgba(0,0,0,0.5);
-            z-index: 100;
-            backdrop-filter: blur(20px);
-            transition: height 0.3s, transform 0.3s;
+            z-index: 9999;
+            /* Ensure it stays on top but check overlap */
+            transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+            backdrop-filter: blur(10px);
         }
-        .jarvis-widget.collapsed {
+
+        #jarvis-widget.collapsed {
             height: 50px;
-            /* overflow: hidden; */
+            overflow: hidden;
+            border-color: var(--secondary);
+            width: 250px;
+            /* Shrink width when collapsed */
         }
-        .jarvis-widget.collapsed .jarvis-body, 
+
+        .jarvis-widget.collapsed .jarvis-body,
         .jarvis-widget.collapsed .jarvis-input-area {
             display: none;
         }
+
         .jarvis-header {
             padding: 15px;
             background: linear-gradient(90deg, var(--primary), #818cf8);
@@ -310,6 +431,7 @@
             align-items: center;
             cursor: pointer;
         }
+
         .jarvis-body {
             flex: 1;
             padding: 15px;
@@ -318,23 +440,36 @@
             flex-direction: column;
             gap: 10px;
         }
+
         .chat-msg {
             padding: 8px 12px;
             border-radius: 8px;
             font-size: 0.9rem;
             max-width: 85%;
         }
-        .msg-user { align-self: flex-end; background: var(--primary); color: white; }
-        .msg-jarvis { align-self: flex-start; background: rgba(255,255,255,0.1); color: var(--text-main); }
+
+        .msg-user {
+            align-self: flex-end;
+            background: var(--primary);
+            color: white;
+        }
+
+        .msg-jarvis {
+            align-self: flex-start;
+            background: rgba(255, 255, 255, 0.1);
+            color: var(--text-main);
+        }
+
         .jarvis-input-area {
             padding: 10px;
             border-top: 1px solid var(--border);
             display: flex;
             gap: 5px;
         }
+
         .jarvis-input {
             flex: 1;
-            background: rgba(0,0,0,0.3);
+            background: rgba(0, 0, 0, 0.3);
             border: 1px solid var(--border);
             padding: 8px;
             border-radius: 6px;
@@ -343,19 +478,32 @@
         }
 
         /* Scrollbar */
-        ::-webkit-scrollbar { width: 6px; }
-        ::-webkit-scrollbar-track { background: transparent; }
-        ::-webkit-scrollbar-thumb { background: rgba(255,255,255,0.2); border-radius: 3px; }
-        ::-webkit-scrollbar-thumb:hover { background: rgba(255,255,255,0.3); }
+        ::-webkit-scrollbar {
+            width: 6px;
+        }
+
+        ::-webkit-scrollbar-track {
+            background: transparent;
+        }
+
+        ::-webkit-scrollbar-thumb {
+            background: rgba(255, 255, 255, 0.2);
+            border-radius: 3px;
+        }
+
+        ::-webkit-scrollbar-thumb:hover {
+            background: rgba(255, 255, 255, 0.3);
+        }
 
         .scan-progress {
             margin-top: 20px;
-            background: rgba(255,255,255,0.1);
+            background: rgba(255, 255, 255, 0.1);
             height: 4px;
             border-radius: 2px;
             overflow: hidden;
             display: none;
         }
+
         .scan-progress-bar {
             height: 100%;
             background: var(--accent);
@@ -365,6 +513,7 @@
         }
     </style>
 </head>
+
 <body>
 
     <!-- SIDEBAR -->
@@ -385,7 +534,7 @@
 
     <!-- MAIN CENTER STAGE -->
     <main class="main-stage">
-        
+
         <!-- Header -->
         <div style="margin-bottom: 30px;">
             <h1 style="font-size: 2rem; font-weight: 300;">Welcome back, Agent.</h1>
@@ -396,14 +545,16 @@
         <div class="card">
             <div class="scan-input-container">
                 <i class="fas fa-search scan-icon"></i>
-                <input type="text" class="scan-input" id="target" placeholder="Enter target (IP, Domain, Email, Username, Phone)...">
+                <input type="text" class="scan-input" id="target"
+                    placeholder="Enter target (IP, Domain, Email, Username, Phone)...">
             </div>
-            
+
             <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 20px;">
                 <h2><i class="fas fa-cubes"></i> Intelligence Modules</h2>
                 <div>
-                   <button class="btn btn-accent" id="select-all" style="font-size: 0.8rem; padding: 6px 12px;">Select All</button>
-                   <button class="btn btn-primary" id="start-scan"><i class="fas fa-play"></i> Start Operation</button>
+                    <button class="btn btn-accent" id="select-all" style="font-size: 0.8rem; padding: 6px 12px;">Select
+                        All</button>
+                    <button class="btn btn-primary" id="start-scan"><i class="fas fa-play"></i> Start Operation</button>
                 </div>
             </div>
 
@@ -414,7 +565,9 @@
             <div class="scan-progress" id="scan-progress">
                 <div class="scan-progress-bar" id="progress-bar"></div>
             </div>
-            <div id="status-text" style="margin-top: 10px; color: var(--accent); font-family: monospace; display: none;">Initializing...</div>
+            <div id="status-text"
+                style="margin-top: 10px; color: var(--accent); font-family: monospace; display: none;">Initializing...
+            </div>
         </div>
 
         <!-- Results Area -->
@@ -427,7 +580,7 @@
 
     <!-- RIGHT DATA PANEL -->
     <aside class="data-panel">
-        
+
         <!-- Upload Section -->
         <div class="card">
             <h2><i class="fas fa-cloud-upload-alt"></i> Data Ingestion</h2>
@@ -449,7 +602,7 @@
                 </div>
             </div>
         </div>
-        
+
         <!-- Live Feed -->
         <div class="card">
             <h2><i class="fas fa-terminal"></i> Live Feed</h2>
@@ -461,33 +614,39 @@
 
         <!-- SYSTEM MONITOR -->
         <div class="card">
-             <div style="display:flex; justify-content:space-between; align-items:center;">
+            <div style="display:flex; justify-content:space-between; align-items:center;">
                 <h2><i class="fas fa-microchip"></i> System Monitor</h2>
-                <button id="restart-btn" class="btn btn-accent" style="padding:4px 8px; font-size:0.75rem; border-color:var(--danger); color:var(--danger);"><i class="fas fa-power-off"></i> Restart</button>
-             </div>
-             
-             <div style="margin-top:10px; font-size:0.9rem;">
-                 <div style="display:flex; justify-content:space-between; margin-bottom:5px;">
-                     <span style="color:var(--text-muted)">CPU</span>
-                     <span id="sys-cpu" style="color:var(--accent)">0%</span>
-                 </div>
-                 <div style="background:rgba(255,255,255,0.1); height:4px; border-radius:2px; margin-bottom:15px; overflow:hidden;">
-                     <div id="bar-cpu" style="width:0%; height:100%; background:var(--accent); transition:width 0.5s;"></div>
-                 </div>
+                <button id="restart-btn" class="btn btn-accent"
+                    style="padding:4px 8px; font-size:0.75rem; border-color:var(--danger); color:var(--danger);"><i
+                        class="fas fa-power-off"></i> Restart</button>
+            </div>
 
-                 <div style="display:flex; justify-content:space-between; margin-bottom:5px;">
-                     <span style="color:var(--text-muted)">RAM</span>
-                     <span id="sys-ram" style="color:var(--secondary)">0%</span>
-                 </div>
-                 <div style="background:rgba(255,255,255,0.1); height:4px; border-radius:2px; margin-bottom:15px; overflow:hidden;">
-                     <div id="bar-ram" style="width:0%; height:100%; background:var(--primary); transition:width 0.5s;"></div>
-                 </div>
+            <div style="margin-top:10px; font-size:0.9rem;">
+                <div style="display:flex; justify-content:space-between; margin-bottom:5px;">
+                    <span style="color:var(--text-muted)">CPU</span>
+                    <span id="sys-cpu" style="color:var(--accent)">0%</span>
+                </div>
+                <div
+                    style="background:rgba(255,255,255,0.1); height:4px; border-radius:2px; margin-bottom:15px; overflow:hidden;">
+                    <div id="bar-cpu" style="width:0%; height:100%; background:var(--accent); transition:width 0.5s;">
+                    </div>
+                </div>
 
-                 <div style="display:flex; justify-content:space-between;">
-                     <span style="color:var(--text-muted)">Uptime</span>
-                     <span id="sys-uptime" style="color:white; font-family:monospace;">00:00:00</span>
-                 </div>
-             </div>
+                <div style="display:flex; justify-content:space-between; margin-bottom:5px;">
+                    <span style="color:var(--text-muted)">RAM</span>
+                    <span id="sys-ram" style="color:var(--secondary)">0%</span>
+                </div>
+                <div
+                    style="background:rgba(255,255,255,0.1); height:4px; border-radius:2px; margin-bottom:15px; overflow:hidden;">
+                    <div id="bar-ram" style="width:0%; height:100%; background:var(--primary); transition:width 0.5s;">
+                    </div>
+                </div>
+
+                <div style="display:flex; justify-content:space-between;">
+                    <span style="color:var(--text-muted)">Uptime</span>
+                    <span id="sys-uptime" style="color:white; font-family:monospace;">00:00:00</span>
+                </div>
+            </div>
         </div>
 
 
@@ -506,7 +665,8 @@
         </div>
         <div class="jarvis-input-area">
             <input type="text" class="jarvis-input" id="jarvis-input" placeholder="Type a command...">
-            <button class="btn btn-primary" id="jarvis-send" style="padding: 8px;"><i class="fas fa-paper-plane"></i></button>
+            <button class="btn btn-primary" id="jarvis-send" style="padding: 8px;"><i
+                    class="fas fa-paper-plane"></i></button>
         </div>
     </div>
 
@@ -518,12 +678,12 @@
 
         /* --- INITIALIZATION --- */
         document.addEventListener('DOMContentLoaded', () => {
-             loadModules();
-             startFilePolling();
-             startSystemMonitor();
-             
-             // Feed
-             logFeed("Data stream active.", "success");
+            loadModules();
+            startFilePolling();
+            startSystemMonitor();
+
+            // Feed
+            logFeed("Data stream active.", "success");
         });
 
         /* --- SYSTEM MONITOR --- */
@@ -533,35 +693,35 @@
         }
 
         async function updateSystemStats() {
-             try {
-                 const res = await fetch('/api/system/stats');
-                 const d = await res.json();
-                 if(d.success) {
-                     document.getElementById('sys-cpu').textContent = d.cpu + "%";
-                     document.getElementById('bar-cpu').style.width = d.cpu + "%";
-                     
-                     document.getElementById('sys-ram').textContent = d.ram + "%";
-                     document.getElementById('bar-ram').style.width = d.ram + "%";
-                     
-                     document.getElementById('sys-uptime').textContent = d.uptime;
-                 }
-             } catch(e) { console.error("Stats error", e); }
+            try {
+                const res = await fetch('/api/system/stats');
+                const d = await res.json();
+                if (d.success) {
+                    document.getElementById('sys-cpu').textContent = d.cpu + "%";
+                    document.getElementById('bar-cpu').style.width = d.cpu + "%";
+
+                    document.getElementById('sys-ram').textContent = d.ram + "%";
+                    document.getElementById('bar-ram').style.width = d.ram + "%";
+
+                    document.getElementById('sys-uptime').textContent = d.uptime;
+                }
+            } catch (e) { console.error("Stats error", e); }
         }
 
         document.getElementById('restart-btn').onclick = async () => {
-            if(!confirm("Are you sure you want to RESTART the Core Engine? Active scans will be aborted.")) return;
-            
+            if (!confirm("Are you sure you want to RESTART the Core Engine? Active scans will be aborted.")) return;
+
             logFeed("Initiating EMERGENCY RESTART...", "error");
             try {
                 const res = await fetch('/api/system/restart', { method: 'POST' });
                 const d = await res.json();
-                if(d.success) {
+                if (d.success) {
                     logFeed("System Restarted. Reconnecting...", "info");
                     setTimeout(() => location.reload(), 3000);
                 } else {
                     logFeed("Restart Failed: " + d.error, "error");
                 }
-            } catch(e) { logFeed("Restart Error: " + e, "error"); }
+            } catch (e) { logFeed("Restart Error: " + e, "error"); }
         };
 
         /* --- MODULES --- */
@@ -569,37 +729,37 @@
             try {
                 const res = await fetch('/api/modules');
                 const data = await res.json();
-                if(data.success) {
+                if (data.success) {
                     renderModules(data.modules);
                     allModulesData = data.modules;
                 }
-            } catch(e) { console.error(e); }
+            } catch (e) { console.error(e); }
         }
 
         function renderModules(modules) {
             const container = document.getElementById('modules-container');
             container.innerHTML = '';
-            
+
             // Group by Activity
             const categories = {};
-            for(const [key, val] of Object.entries(modules)) {
+            for (const [key, val] of Object.entries(modules)) {
                 const cat = val.category || 'Other';
-                if(!categories[cat]) categories[cat] = [];
-                categories[cat].push({key, ...val});
+                if (!categories[cat]) categories[cat] = [];
+                categories[cat].push({ key, ...val });
             }
 
-            for(const [cat, items] of Object.entries(categories)) {
+            for (const [cat, items] of Object.entries(categories)) {
                 const group = document.createElement('div');
                 group.className = 'module-category';
-                
+
                 const header = document.createElement('div');
                 header.className = 'module-header';
                 header.innerHTML = `<strong>${cat}</strong> <small style="color:var(--text-muted)">${items.length} modules</small>`;
                 header.onclick = () => { grid.classList.toggle('active'); };
-                
+
                 const grid = document.createElement('div');
                 grid.className = 'module-grid active'; // Default open for now
-                
+
                 items.forEach(item => {
                     const card = document.createElement('div');
                     card.className = 'module-card';
@@ -622,7 +782,7 @@
         }
 
         function toggleModule(card, key) {
-            if(activeModules.has(key)) {
+            if (activeModules.has(key)) {
                 activeModules.delete(key);
                 card.classList.remove('selected');
             } else {
@@ -638,16 +798,16 @@
         selectBtn.onclick = () => {
             const allCards = document.querySelectorAll('.module-card');
             isAllSelected = !isAllSelected;
-            
-            if(isAllSelected) {
+
+            if (isAllSelected) {
                 // Select All
                 allCards.forEach(c => {
                     const key = c.querySelector('.mod-name').innerText; // Not ideal but works given structure
-                    if(!c.classList.contains('selected')) {
-                         c.classList.add('selected');
-                         activeModules.add(key); // We need the key. 
-                         // Better: The click handler does toggle.
-                         // Let's just manually set it to avoid toggle confusion
+                    if (!c.classList.contains('selected')) {
+                        c.classList.add('selected');
+                        activeModules.add(key); // We need the key. 
+                        // Better: The click handler does toggle.
+                        // Let's just manually set it to avoid toggle confusion
                     }
                 });
                 selectBtn.innerText = "Deselect All";
@@ -656,7 +816,7 @@
             } else {
                 // Deselect All
                 allCards.forEach(c => {
-                   c.classList.remove('selected');
+                    c.classList.remove('selected');
                 });
                 activeModules.clear();
                 selectBtn.innerText = "Select All";
@@ -666,31 +826,31 @@
         };
 
         function updateSelectAllBtn() {
-             const total = document.querySelectorAll('.module-card').length;
-             if(total > 0 && activeModules.size === total) {
-                 isAllSelected = true;
-                 selectBtn.innerText = "Deselect All";
-             } else {
-                 isAllSelected = false;
-                 selectBtn.innerText = "Select All";
-             }
+            const total = document.querySelectorAll('.module-card').length;
+            if (total > 0 && activeModules.size === total) {
+                isAllSelected = true;
+                selectBtn.innerText = "Deselect All";
+            } else {
+                isAllSelected = false;
+                selectBtn.innerText = "Select All";
+            }
         }
-        
+
         /* --- NAVIGATION --- */
         document.querySelectorAll('.nav-item').forEach(item => {
             item.onclick = () => {
                 const text = item.innerText.trim();
                 let url = '/';
-                if(text === 'Graph View') url = '/graph';
-                else if(text === 'History') url = '/history';
-                else if(text === 'Settings') url = '/settings';
-                else if(text === 'Dashboard') url = '/';
-                else if(text.includes('Logout')) { url = '/logout'; return; } // Handled by simple link usually
-                
-                if(url !== '/') window.location.href = url;
+                if (text === 'Graph View') url = '/graph';
+                else if (text === 'History') url = '/history';
+                else if (text === 'Settings') url = '/settings';
+                else if (text === 'Dashboard') url = '/';
+                else if (text.includes('Logout')) { url = '/logout'; return; } // Handled by simple link usually
+
+                if (url !== '/') window.location.href = url;
             };
         });
-        
+
         /* --- DRAG & DROP UPLOAD --- */
         const dropZone = document.getElementById('upload-zone');
         const fileInput = document.getElementById('file-input');
@@ -708,24 +868,24 @@
         async function handlefiles(files) {
             const formData = new FormData();
             let count = 0;
-            for(let i=0; i<files.length; i++) {
+            for (let i = 0; i < files.length; i++) {
                 formData.append('files', files[i]);
                 count++;
             }
-            
-            if(count === 0) return;
+
+            if (count === 0) return;
 
             logFeed(`Uploading ${count} files...`, "info");
             try {
                 const res = await fetch('/api/upload', { method: 'POST', body: formData });
                 const d = await res.json();
-                if(d.success) {
+                if (d.success) {
                     logFeed(d.message, "success");
                     updateFileList(); // Refresh list immediately
                 } else {
                     logFeed("Upload failed: " + d.error, "error");
                 }
-            } catch(e) { logFeed("Upload error: " + e, "error"); }
+            } catch (e) { logFeed("Upload error: " + e, "error"); }
         }
 
         /* --- FILE LIST POLLING --- */
@@ -738,11 +898,11 @@
             try {
                 const res = await fetch('/api/uploads');
                 const data = await res.json();
-                if(data.success) {
+                if (data.success) {
                     const list = document.getElementById('file-list');
                     list.innerHTML = '';
-                    
-                    if(data.files.length === 0) {
+
+                    if (data.files.length === 0) {
                         list.innerHTML = '<div style="padding:10px; color:var(--text-muted); text-align:center;">No files ingested.</div>';
                         return;
                     }
@@ -751,11 +911,11 @@
                         let icon = 'fa-file';
                         let statusClass = 'status-pending';
                         let statusIcon = 'fa-clock';
-                        
-                        if(f.status === 'analyzed') {
+
+                        if (f.status === 'analyzed') {
                             statusClass = 'status-analyzed';
                             statusIcon = 'fa-check-circle';
-                        } else if(f.status === 'failed') {
+                        } else if (f.status === 'failed') {
                             statusClass = 'status-failed';
                             statusIcon = 'fa-exclamation-triangle';
                         }
@@ -777,11 +937,11 @@
                         list.appendChild(item);
                     });
                 }
-            } catch(e) { console.error("Polling error", e); }
+            } catch (e) { console.error("Polling error", e); }
         }
 
         /* --- LIVE FEED LOGIC --- */
-        function logFeed(msg, type="info") {
+        function logFeed(msg, type = "info") {
             const feed = document.getElementById('live-feed');
             const item = document.createElement('div');
             item.className = `feed-item feed-${type}`;
@@ -793,19 +953,19 @@
         /* --- SCAN LOGIC --- */
         document.getElementById('start-scan').onclick = async () => {
             const target = document.getElementById('target').value;
-            if(!target) { alert("Target required."); return; }
-            if(activeModules.size === 0) { alert("Select at least one module."); return; }
+            if (!target) { alert("Target required."); return; }
+            if (activeModules.size === 0) { alert("Select at least one module."); return; }
 
             document.getElementById('start-scan').disabled = true;
             document.getElementById('scan-progress').style.display = 'block';
             document.getElementById('status-text').style.display = 'block';
-            
+
             logFeed(`Starting operation on ${target}...`, "info");
 
             try {
                 const res = await fetch('/api/scan', {
                     method: 'POST',
-                    headers: {'Content-Type': 'application/json'},
+                    headers: { 'Content-Type': 'application/json' },
                     body: JSON.stringify({
                         target: target,
                         modules: Array.from(activeModules),
@@ -813,32 +973,32 @@
                     })
                 });
                 const d = await res.json();
-                if(!d.success) {
+                if (!d.success) {
                     logFeed("Scan Start Failed: " + d.error, "error");
                     document.getElementById('start-scan').disabled = false;
                 }
-            } catch(e) {
-                 logFeed("Network Error: " + e, "error");
-                 document.getElementById('start-scan').disabled = false;
+            } catch (e) {
+                logFeed("Network Error: " + e, "error");
+                document.getElementById('start-scan').disabled = false;
             }
         };
 
         socket.on('scan_update', (data) => {
             const bar = document.getElementById('progress-bar');
             const txt = document.getElementById('status-text');
-            
-            if(data.progress) bar.style.width = data.progress + "%";
-            if(data.message) {
+
+            if (data.progress) bar.style.width = data.progress + "%";
+            if (data.message) {
                 txt.textContent = data.message;
                 // Only log major updates to feed to avoid spam
-                if(data.status === 'completed' || data.status === 'failed' || data.progress % 20 === 0) {
-                     logFeed(data.message, data.status === 'failed' ? 'error' : 'info');
-                     // AI Narration: Also post to Jarvis Chat
-                     addChat(`[UPDATE] ${data.message}`, 'jarvis');
+                if (data.status === 'completed' || data.status === 'failed' || data.progress % 20 === 0) {
+                    logFeed(data.message, data.status === 'failed' ? 'error' : 'info');
+                    // AI Narration: Also post to Jarvis Chat
+                    addChat(`[UPDATE] ${data.message}`, 'jarvis');
                 }
             }
 
-            if(data.status === 'completed') {
+            if (data.status === 'completed') {
                 document.getElementById('start-scan').disabled = false;
                 renderResults(data);
                 logFeed("Operation Completed Successfully.", "success");
@@ -850,7 +1010,7 @@
             const area = document.getElementById('results-area');
             area.style.display = 'block';
             const content = document.getElementById('results-content');
-            
+
             // Simple JSON dump for now, can be beautified later
             content.innerHTML = `
                 <div style="display:grid; grid-template-columns: repeat(4, 1fr); gap:10px; margin-bottom:20px;">
@@ -879,9 +1039,9 @@
         function toggleJarvis() {
             const w = document.getElementById('jarvis-widget');
             w.classList.toggle('collapsed');
-            
+
             const icon = w.querySelector('.jarvis-header i.fa-chevron-down');
-            if(w.classList.contains('collapsed')) {
+            if (w.classList.contains('collapsed')) {
                 // icon.classList.replace('fa-chevron-down', 'fa-chevron-up');
                 icon.style.transform = 'rotate(180deg)';
             } else {
@@ -891,12 +1051,12 @@
         }
 
         document.getElementById('jarvis-send').onclick = sendJarvis;
-        document.getElementById('jarvis-input').onkeypress = (e) => { if(e.key==='Enter') sendJarvis(); };
+        document.getElementById('jarvis-input').onkeypress = (e) => { if (e.key === 'Enter') sendJarvis(); };
 
         async function sendJarvis() {
             const inp = document.getElementById('jarvis-input');
             const txt = inp.value.trim();
-            if(!txt) return;
+            if (!txt) return;
 
             addChat(txt, 'user');
             inp.value = '';
@@ -904,36 +1064,36 @@
             try {
                 const res = await fetch('/api/jarvis/chat', {
                     method: 'POST',
-                    headers: {'Content-Type': 'application/json'},
-                    body: JSON.stringify({message: txt})
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ message: txt })
                 });
                 const d = await res.json();
-                if(d.success) {
+                if (d.success) {
                     addChat(d.data.response, 'jarvis');
-                    if(d.data.action === 'scan') {
+                    if (d.data.action === 'scan') {
                         document.getElementById('target').value = d.data.target;
                         // Auto-select modules from d.data.modules
-                        if(d.data.modules) {
-                             // clear
-                             activeModules.clear();
-                             document.querySelectorAll('.module-card').forEach(c => c.classList.remove('selected'));
-                             
-                             d.data.modules.forEach(mKey => {
-                                 // Check if we have this module rendered
-                                 // This is a bit tricky since we dynamically render. 
-                                 // We'll just rely on the 'allModulesData' and re-render or find specific elements?
-                                 // Simpler: Find by text content of card? No.
-                                 // Correct way: Add ID to module cards?
-                                 // Let's just emulate clicks or use activeModules set directly if we re-render?
-                                 // Actually simpler: Just set activeModules and visually update if possible.
-                                 activeModules.add(mKey);
-                             });
-                             // Re-render to show selection
-                             if(Object.keys(allModulesData).length > 0) renderModules(allModulesData); 
+                        if (d.data.modules) {
+                            // clear
+                            activeModules.clear();
+                            document.querySelectorAll('.module-card').forEach(c => c.classList.remove('selected'));
+
+                            d.data.modules.forEach(mKey => {
+                                // Check if we have this module rendered
+                                // This is a bit tricky since we dynamically render. 
+                                // We'll just rely on the 'allModulesData' and re-render or find specific elements?
+                                // Simpler: Find by text content of card? No.
+                                // Correct way: Add ID to module cards?
+                                // Let's just emulate clicks or use activeModules set directly if we re-render?
+                                // Actually simpler: Just set activeModules and visually update if possible.
+                                activeModules.add(mKey);
+                            });
+                            // Re-render to show selection
+                            if (Object.keys(allModulesData).length > 0) renderModules(allModulesData);
                         }
                     }
                 }
-            } catch(e) { addChat("Error: "+e, 'jarvis'); }
+            } catch (e) { addChat("Error: " + e, 'jarvis'); }
         }
 
         function addChat(text, sender) {
@@ -947,4 +1107,5 @@
 
     </script>
 </body>
+
 </html>

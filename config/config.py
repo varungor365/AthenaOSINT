@@ -64,7 +64,11 @@ class Config:
             'OLLAMA_MODEL': os.getenv('OLLAMA_MODEL', 'llama3:8b'),
             
             # Database
+            # Database
             'DATABASE_URL': os.getenv('DATABASE_URL', 'sqlite:///athena.db'),
+
+            # AutoGen
+            'OPENAI_API_KEY': os.getenv('OPENAI_API_KEY', ''),
             
             # Paths
             'DATA_DIR': Path(__file__).parent.parent / 'data',
