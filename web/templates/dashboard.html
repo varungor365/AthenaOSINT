@@ -370,6 +370,16 @@
 
                 <div class="form-group">
                     <label>Select Modules</label>
+                    <div class="module-controls" style="margin-bottom: 15px; display: flex; gap: 10px; flex-wrap: wrap;">
+                        <input type="text" id="module-search" placeholder="🔍 Search modules..." 
+                            style="flex: 1; min-width: 200px; padding: 8px 12px; border: 2px solid var(--border); border-radius: 6px;">
+                        <button class="button button-small" id="select-all" style="padding: 8px 16px;">Select All</button>
+                        <button class="button button-small" id="deselect-all" style="padding: 8px 16px;">Deselect All</button>
+                        <button class="button button-small" id="check-services" style="padding: 8px 16px; background: #10b981;">🔄 Check Services</button>
+                    </div>
+                    <div id="service-status" style="margin-bottom: 10px; padding: 10px; background: #f3f4f6; border-radius: 6px; display: none;">
+                        <small><strong>Service Status:</strong> <span id="status-text">Checking...</span></small>
+                    </div>
                     <div class="modules-grid" id="modules-container">
                         <!-- Modules loaded dynamically -->
                     </div>
@@ -526,32 +536,130 @@
             }
         });
 
+        // Module descriptions and tags
+        const moduleInfo = {
+            'sherlock': { desc: 'Find usernames across 400+ social networks', tag: '👤 Social', category: 'username' },
+            'holehe': { desc: 'Check email registration on 120+ websites', tag: '📧 Email', category: 'email' },
+            'leak_checker': { desc: 'Search data breaches and password leaks', tag: '🔓 Breaches', category: 'breach' },
+            'theharvester': { desc: 'Gather emails, subdomains, IPs from search engines', tag: '🌐 OSINT', category: 'recon' },
+            'subfinder': { desc: 'Discover subdomains using passive sources', tag: '🔍 DNS', category: 'recon' },
+            'wayback': { desc: 'Access archived website versions and history', tag: '⏰ Archive', category: 'recon' },
+            'nuclei': { desc: 'Scan for vulnerabilities and misconfigurations', tag: '🛡️ Security', category: 'security' },
+            'dnsdumpster': { desc: 'DNS reconnaissance and mapping', tag: '🌐 DNS', category: 'recon' },
+            'exiftool': { desc: 'Extract metadata from images and files', tag: '📷 Metadata', category: 'forensics' },
+            'auto_dorker': { desc: 'Automated Google Dorks for sensitive files', tag: '🔎 Dorks', category: 'recon' },
+            'cloud_hunter': { desc: 'Find exposed cloud storage buckets', tag: '☁️ Cloud', category: 'cloud' },
+            'crypto_hunter': { desc: 'Track cryptocurrency addresses and transactions', tag: '₿ Crypto', category: 'blockchain' },
+            'profile_scraper': { desc: 'Extract detailed social media profile data', tag: '📱 Social', category: 'social' },
+            'sentiment': { desc: 'Analyze sentiment and reputation online', tag: '💭 Analysis', category: 'analysis' },
+            'ocr': { desc: 'Extract text from images using Tesseract', tag: '📸 OCR', category: 'forensics' },
+            'email_permutator': { desc: 'Generate and verify email address variations', tag: '📧 Email', category: 'email' },
+            'job_hunter': { desc: 'Analyze job postings for tech stack intel', tag: '💼 Jobs', category: 'recon' },
+            'canary_checker': { desc: 'Detect honeypots and monitoring systems', tag: '🐦 Security', category: 'security' }
+        };
+
+        let allModules = [];
+
         async function loadModules() {
             try {
                 const response = await fetch('/api/modules');
                 const data = await response.json();
 
                 if (data.success) {
-                    const container = document.getElementById('modules-container');
-                    container.innerHTML = '';
-
-                    const defaultModules = ['sherlock', 'holehe', 'leak_checker'];
-
-                    for (const [name, info] of Object.entries(data.modules)) {
-                        if (info.available) {
-                            const div = document.createElement('div');
-                            div.className = 'module-checkbox';
-                            div.innerHTML = `
-                                <input type="checkbox" value="${name}" id="module-${name}" 
-                                    ${defaultModules.includes(name) ? 'checked' : ''}>
-                                <label for="module-${name}">${name}</label>
-                            `;
-                            container.appendChild(div);
-                        }
-                    }
+                    allModules = Object.entries(data.modules).filter(([name, info]) => info.available);
+                    renderModules(allModules);
                 }
             } catch (error) {
                 console.error('Failed to load modules:', error);
+            }
+        }
+
+        function renderModules(modules) {
+            const container = document.getElementById('modules-container');
+            container.innerHTML = '';
+            const defaultModules = ['sherlock', 'holehe', 'leak_checker'];
+
+            for (const [name, info] of modules) {
+                const mInfo = moduleInfo[name] || { desc: 'OSINT module', tag: '🔧 Tool', category: 'other' };
+                const div = document.createElement('div');
+                div.className = 'module-checkbox';
+                div.setAttribute('data-module-name', name);
+                div.innerHTML = `
+                    <input type="checkbox" value="${name}" id="module-${name}" 
+                        ${defaultModules.includes(name) ? 'checked' : ''}>
+                    <label for="module-${name}" title="${mInfo.desc}">
+                        <span class="module-tag" style="display: inline-block; background: #667eea; color: white; padding: 2px 8px; border-radius: 4px; font-size: 0.75em; margin-right: 5px;">${mInfo.tag}</span>
+                        <span style="font-weight: 600;">${name}</span>
+                        <br><small style="color: #6b7280; font-size: 0.85em;">${mInfo.desc}</small>
+                        <span class="service-indicator" data-service="${name}" style="float: right; font-size: 0.8em;"></span>
+                    </label>
+                `;
+                container.appendChild(div);
+            }
+        }
+
+        // Search functionality
+        document.addEventListener('DOMContentLoaded', () => {
+            const searchInput = document.getElementById('module-search');
+            searchInput.addEventListener('input', (e) => {
+                const searchTerm = e.target.value.toLowerCase();
+                const filtered = allModules.filter(([name, info]) => {
+                    const mInfo = moduleInfo[name] || {};
+                    return name.toLowerCase().includes(searchTerm) || 
+                           (mInfo.desc && mInfo.desc.toLowerCase().includes(searchTerm)) ||
+                           (mInfo.tag && mInfo.tag.toLowerCase().includes(searchTerm)) ||
+                           (mInfo.category && mInfo.category.toLowerCase().includes(searchTerm));
+                });
+                renderModules(filtered);
+            });
+
+            // Select/Deselect All
+            document.getElementById('select-all').addEventListener('click', () => {
+                document.querySelectorAll('.module-checkbox input[type="checkbox"]').forEach(cb => cb.checked = true);
+            });
+
+            document.getElementById('deselect-all').addEventListener('click', () => {
+                document.querySelectorAll('.module-checkbox input[type="checkbox"]').forEach(cb => cb.checked = false);
+            });
+
+            // Check Services
+            document.getElementById('check-services').addEventListener('click', checkServiceStatus);
+        });
+
+        async function checkServiceStatus() {
+            const statusDiv = document.getElementById('service-status');
+            const statusText = document.getElementById('status-text');
+            statusDiv.style.display = 'block';
+            statusText.innerHTML = '🔄 Checking services...';
+
+            try {
+                const response = await fetch('/api/service-status');
+                const data = await response.json();
+
+                if (data.success) {
+                    const live = data.services.filter(s => s.status === 'live').length;
+                    const total = data.services.length;
+                    statusText.innerHTML = `✅ ${live}/${total} services operational`;
+
+                    // Update individual service indicators
+                    data.services.forEach(service => {
+                        const indicators = document.querySelectorAll(`[data-service="${service.name}"]`);
+                        indicators.forEach(indicator => {
+                            if (service.status === 'live') {
+                                indicator.innerHTML = '🟢';
+                                indicator.title = 'Service Online';
+                            } else {
+                                indicator.innerHTML = '🔴';
+                                indicator.title = 'Service Offline';
+                            }
+                        });
+                    });
+                } else {
+                    statusText.innerHTML = '⚠️ Could not check services';
+                }
+            } catch (error) {
+                statusText.innerHTML = '❌ Check failed';
+                console.error('Service check failed:', error);
             }
         }
 

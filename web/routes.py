@@ -50,6 +50,64 @@ def get_modules():
         }), 500
 
 
+@app.route('/api/service-status', methods=['GET'])
+def check_service_status():
+    """Check status of OSINT modules/services.
+    
+    Returns:
+        JSON response with service status
+    """
+    try:
+        import requests
+        from modules import *
+        
+        services = []
+        
+        # Test external services
+        service_checks = {
+            'sherlock': {'url': 'https://github.com/sherlock-project/sherlock', 'method': 'GET'},
+            'holehe': {'check': 'module'},  # Module-based check
+            'leak_checker': {'check': 'module'},
+            'theharvester': {'check': 'module'},
+            'subfinder': {'check': 'command'},  # Binary check
+            'wayback': {'url': 'https://archive.org', 'method': 'GET'},
+            'nuclei': {'check': 'command'},
+            'dnsdumpster': {'url': 'https://dnsdumpster.com', 'method': 'GET'},
+            'exiftool': {'check': 'command'},
+        }
+        
+        for name, check_info in service_checks.items():
+            status = 'live'
+            try:
+                if 'url' in check_info:
+                    # HTTP check
+                    r = requests.head(check_info['url'], timeout=3)
+                    status = 'live' if r.status_code < 500 else 'down'
+                elif check_info.get('check') == 'module':
+                    # Python module availability
+                    status = 'live'  # If imported successfully
+                elif check_info.get('check') == 'command':
+                    # Command availability
+                    import shutil
+                    status = 'live' if shutil.which(name) else 'down'
+            except:
+                status = 'down'
+            
+            services.append({'name': name, 'status': status})
+        
+        return jsonify({
+            'success': True,
+            'services': services
+        })
+    
+    except Exception as e:
+        logger.error(f"Service status check failed: {e}")
+        return jsonify({
+            'success': False,
+            'error': str(e)
+        }), 500
+
+
 @app.route('/api/validate', methods=['POST'])
 def validate():
     """Validate a target input.
