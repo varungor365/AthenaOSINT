@@ -67,8 +67,18 @@ class BackgroundWorker(threading.Thread):
                         )
                 
                 # 3. Archive (Move to processed)
-                shutil.move(str(file_path), str(PROCESSED_DIR / file_path.name))
+                dest_path = PROCESSED_DIR / file_path.name
+                shutil.move(str(file_path), str(dest_path))
                 logger.success(f"  └─ File {file_path.name} processed and archived.")
+
+                # 4. Cloud Vault Sync (Auto-Backup)
+                try:
+                    from core.vault import CloudVault
+                    vault = CloudVault()
+                    if vault.enabled:
+                        vault.upload_file(str(dest_path), object_name=f"breaches/{file_path.name}")
+                except Exception as ve:
+                    logger.error(f"Cloud Vault Sync Failed: {ve}")
                 
             except Exception as e:
                 logger.error(f"  └─ Failed to process {file_path.name}: {e}")

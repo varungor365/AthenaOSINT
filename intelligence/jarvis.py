@@ -99,11 +99,22 @@ Do not allow dangerous system commands outside of the defined scopes.
                  "response": f"Initializing scan on {target} ({target_type}). Selected {len(modules_to_run)} relevant modules."
             }
 
-        # 3. CHAT (Fallback)
-        return {
-            "type": "chat", 
-            "response": f"Command not recognized: '{user_text}'. Type 'help' for options."
-        }
+        # 3. CHAT (Conversational Fallback)
+        try:
+            # Use the LLM to generate a response
+            prompt = f"User input: {user_text}\nAnswer as Jarvis (helpful, cyber-security expert persona)."
+            response = self.llm.generate_text(prompt, system_prompt=self.system_prompt)
+            
+            return {
+                "type": "chat",
+                "response": response
+            }
+        except Exception as e:
+            logger.error(f"LLM Chat Error: {e}")
+            return {
+                "type": "chat", 
+                "response": "I am having trouble connecting to my neural network. Please check my configuration."
+            }
 
     def _generate_code_action(self, filename: str, prompt: str) -> Dict[str, Any]:
         """Handle code generation request."""

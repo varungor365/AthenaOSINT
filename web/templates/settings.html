@@ -1,0 +1,197 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <title>Athena - Settings</title>
+    <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css" rel="stylesheet">
+    <link
+        href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;600;700&family=JetBrains+Mono:wght@400;700&display=swap"
+        rel="stylesheet">
+    <style>
+        :root {
+            --bg-dark: #0f1115;
+            --primary: #6366f1;
+            --text-main: #e2e8f0;
+            --text-muted: #94a3b8;
+            --border: rgba(255, 255, 255, 0.1);
+            --card-bg: rgba(20, 20, 25, 0.8);
+        }
+
+        body {
+            margin: 0;
+            background: var(--bg-dark);
+            color: var(--text-main);
+            font-family: 'Inter', sans-serif;
+            padding: 40px;
+        }
+
+        .container {
+            max-width: 800px;
+            margin: 0 auto;
+        }
+
+        .header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 30px;
+        }
+
+        .logo {
+            font-family: 'JetBrains Mono';
+            font-weight: bold;
+            font-size: 1.5rem;
+        }
+
+        .btn {
+            padding: 10px 20px;
+            background: rgba(255, 255, 255, 0.05);
+            color: white;
+            border: 1px solid var(--border);
+            border-radius: 8px;
+            text-decoration: none;
+            transition: background 0.3s;
+        }
+
+        .btn:hover {
+            background: rgba(255, 255, 255, 0.1);
+        }
+
+        .btn-save {
+            background: var(--primary);
+            border-color: var(--primary);
+            cursor: pointer;
+        }
+
+        .section {
+            background: var(--card-bg);
+            padding: 30px;
+            border-radius: 12px;
+            border: 1px solid var(--border);
+            margin-bottom: 20px;
+        }
+
+        h3 {
+            margin-top: 0;
+            border-bottom: 1px solid var(--border);
+            padding-bottom: 15px;
+            margin-bottom: 20px;
+            display: flex;
+            align-items: center;
+            gap: 10px;
+        }
+
+        .form-group {
+            margin-bottom: 20px;
+        }
+
+        label {
+            display: block;
+            margin-bottom: 8px;
+            font-weight: 600;
+            color: var(--text-muted);
+            font-size: 0.9rem;
+        }
+
+        input[type="text"],
+        input[type="password"] {
+            width: 100%;
+            padding: 12px;
+            background: rgba(0, 0, 0, 0.3);
+            border: 1px solid var(--border);
+            border-radius: 8px;
+            color: white;
+            font-family: monospace;
+        }
+
+        input:focus {
+            outline: none;
+            border-color: var(--primary);
+        }
+
+        .checkbox-group {
+            display: flex;
+            align-items: center;
+            gap: 10px;
+        }
+
+        input[type="checkbox"] {
+            width: 18px;
+            height: 18px;
+        }
+    </style>
+</head>
+
+<body>
+    <div class="container">
+        <div class="header">
+            <div class="logo"><i class="fas fa-cog"></i> System Configuration</div>
+            <a href="/" class="btn"><i class="fas fa-arrow-left"></i> Back to Dashboard</a>
+        </div>
+
+        <form id="settings-form">
+            <div class="section">
+                <h3><i class="fas fa-key"></i> API Keys</h3>
+                <div class="form-group">
+                    <label>Shodan API Key</label>
+                    <input type="password" placeholder="sk_...">
+                </div>
+                <div class="form-group">
+                    <label>Censys ID</label>
+                    <input type="text" placeholder="...">
+                </div>
+                <div class="form-group">
+                    <label>Censys Secret</label>
+                    <input type="password" placeholder="...">
+                </div>
+                <div class="form-group">
+                    <label>OpenAI / LLM Key</label>
+                    <input type="password" placeholder="sk-...">
+                </div>
+            </div>
+
+            <div class="section">
+                <h3><i class="fas fa-cloud-upload-alt"></i> Secure Cloud Vault (S3 / MinIO)</h3>
+                <div class="form-group checkbox-group">
+                    <input type="checkbox" id="cloud-enabled">
+                    <label for="cloud-enabled" style="margin:0;">Enable Cloud Sync</label>
+                </div>
+                <div class="form-group">
+                    <label>Endpoint URL (Optional for AWS)</label>
+                    <input type="text" placeholder="https://minio.example.com">
+                </div>
+                <div class="form-group">
+                    <label>Bucket Name</label>
+                    <input type="text" placeholder="athena-vault">
+                </div>
+                <div class="form-group">
+                    <label>Access Key</label>
+                    <input type="password" placeholder="...">
+                </div>
+                <div class="form-group">
+                    <label>Secret Key</label>
+                    <input type="password" placeholder="...">
+                </div>
+            </div>
+
+            <div class="section">
+                <h3><i class="fas fa-sliders-h"></i> General Settings</h3>
+                <div class="form-group checkbox-group">
+                    <input type="checkbox" id="dark-mode" checked>
+                    <label for="dark-mode" style="margin:0;">Enable Dark Mode</label>
+                </div>
+                <div class="form-group checkbox-group">
+                    <input type="checkbox" id="auto-scan" checked>
+                    <label for="auto-scan" style="margin:0;">Auto-Analyze Uploaded Breaches</label>
+                </div>
+            </div>
+
+            <div style="text-align: right;">
+                <button type="button" class="btn btn-save">Save Configuration</button>
+            </div>
+        </form>
+    </div>
+</body>
+
+</html>

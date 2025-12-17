@@ -281,7 +281,7 @@
             bottom: 20px;
             right: 380px; /* Left of the data panel */
             width: 350px;
-            height: 400px; /* Default collapsed height could be small */
+            height: 500px; /* Increased default height */
             background: rgba(20, 20, 25, 0.95);
             border: 1px solid var(--primary);
             border-radius: 12px;
@@ -290,7 +290,15 @@
             box-shadow: 0 10px 30px rgba(0,0,0,0.5);
             z-index: 100;
             backdrop-filter: blur(20px);
-            transition: height 0.3s;
+            transition: height 0.3s, transform 0.3s;
+        }
+        .jarvis-widget.collapsed {
+            height: 50px;
+            /* overflow: hidden; */
+        }
+        .jarvis-widget.collapsed .jarvis-body, 
+        .jarvis-widget.collapsed .jarvis-input-area {
+            display: none;
         }
         .jarvis-header {
             padding: 15px;
@@ -621,14 +629,68 @@
                 activeModules.add(key);
                 card.classList.add('selected');
             }
+            updateSelectAllBtn();
         }
 
-        document.getElementById('select-all').onclick = () => {
-            document.querySelectorAll('.module-card').forEach(c => {
-                 if(!c.classList.contains('selected')) c.click();
-            });
+        let isAllSelected = false;
+        const selectBtn = document.getElementById('select-all');
+
+        selectBtn.onclick = () => {
+            const allCards = document.querySelectorAll('.module-card');
+            isAllSelected = !isAllSelected;
+            
+            if(isAllSelected) {
+                // Select All
+                allCards.forEach(c => {
+                    const key = c.querySelector('.mod-name').innerText; // Not ideal but works given structure
+                    if(!c.classList.contains('selected')) {
+                         c.classList.add('selected');
+                         activeModules.add(key); // We need the key. 
+                         // Better: The click handler does toggle.
+                         // Let's just manually set it to avoid toggle confusion
+                    }
+                });
+                selectBtn.innerText = "Deselect All";
+                selectBtn.classList.add('btn-primary'); // Make it look active
+                selectBtn.classList.remove('btn-accent');
+            } else {
+                // Deselect All
+                allCards.forEach(c => {
+                   c.classList.remove('selected');
+                });
+                activeModules.clear();
+                selectBtn.innerText = "Select All";
+                selectBtn.classList.remove('btn-primary');
+                selectBtn.classList.add('btn-accent');
+            }
         };
 
+        function updateSelectAllBtn() {
+             const total = document.querySelectorAll('.module-card').length;
+             if(total > 0 && activeModules.size === total) {
+                 isAllSelected = true;
+                 selectBtn.innerText = "Deselect All";
+             } else {
+                 isAllSelected = false;
+                 selectBtn.innerText = "Select All";
+             }
+        }
+        
+        /* --- NAVIGATION --- */
+        document.querySelectorAll('.nav-item').forEach(item => {
+            item.onclick = () => {
+                const text = item.innerText.trim();
+                let url = '/';
+                if(text === 'Graph View') url = '/graph';
+                else if(text === 'History') url = '/history';
+                else if(text === 'Settings') url = '/settings';
+                else if(text === 'Dashboard') url = '/';
+                else if(text.includes('Logout')) { url = '/logout'; return; } // Handled by simple link usually
+                
+                if(url !== '/') window.location.href = url;
+            };
+        });
+        
         /* --- DRAG & DROP UPLOAD --- */
         const dropZone = document.getElementById('upload-zone');
         const fileInput = document.getElementById('file-input');
@@ -771,6 +833,8 @@
                 // Only log major updates to feed to avoid spam
                 if(data.status === 'completed' || data.status === 'failed' || data.progress % 20 === 0) {
                      logFeed(data.message, data.status === 'failed' ? 'error' : 'info');
+                     // AI Narration: Also post to Jarvis Chat
+                     addChat(`[UPDATE] ${data.message}`, 'jarvis');
                 }
             }
 
@@ -778,6 +842,7 @@
                 document.getElementById('start-scan').disabled = false;
                 renderResults(data);
                 logFeed("Operation Completed Successfully.", "success");
+                addChat("I have finished the operation. The intelligence data is ready for your review.", "jarvis");
             }
         });
 
@@ -812,7 +877,17 @@
 
         /* --- JARVIS --- */
         function toggleJarvis() {
-            // minimal collapse logic if needed
+            const w = document.getElementById('jarvis-widget');
+            w.classList.toggle('collapsed');
+            
+            const icon = w.querySelector('.jarvis-header i.fa-chevron-down');
+            if(w.classList.contains('collapsed')) {
+                // icon.classList.replace('fa-chevron-down', 'fa-chevron-up');
+                icon.style.transform = 'rotate(180deg)';
+            } else {
+                // icon.classList.replace('fa-chevron-up', 'fa-chevron-down');
+                icon.style.transform = 'rotate(0deg)';
+            }
         }
 
         document.getElementById('jarvis-send').onclick = sendJarvis;

@@ -1,0 +1,142 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <title>Athena - Graph View</title>
+    <script src="https://unpkg.com/vis-network/standalone/umd/vis-network.min.js"></script>
+    <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css" rel="stylesheet">
+    <link
+        href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;600;700&family=JetBrains+Mono:wght@400;700&display=swap"
+        rel="stylesheet">
+    <style>
+        :root {
+            --bg-dark: #0f1115;
+            --primary: #6366f1;
+            --text-main: #e2e8f0;
+            --border: rgba(255, 255, 255, 0.1);
+        }
+
+        body {
+            margin: 0;
+            background: var(--bg-dark);
+            color: var(--text-main);
+            font-family: 'Inter', sans-serif;
+            height: 100vh;
+            display: flex;
+            flex-direction: column;
+        }
+
+        .header {
+            padding: 15px 30px;
+            border-bottom: 1px solid var(--border);
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            background: rgba(20, 20, 25, 0.9);
+        }
+
+        .logo {
+            font-family: 'JetBrains Mono';
+            font-weight: bold;
+            font-size: 1.2rem;
+            display: flex;
+            align-items: center;
+            gap: 10px;
+        }
+
+        .btn {
+            padding: 8px 16px;
+            border: 1px solid var(--border);
+            background: rgba(255, 255, 255, 0.05);
+            color: white;
+            border-radius: 6px;
+            cursor: pointer;
+            text-decoration: none;
+            font-size: 0.9rem;
+        }
+
+        .btn:hover {
+            background: rgba(255, 255, 255, 0.1);
+        }
+
+        .btn-primary {
+            background: var(--primary);
+            border-color: var(--primary);
+        }
+
+        #network {
+            flex: 1;
+            background: #000;
+        }
+
+        .controls {
+            position: absolute;
+            top: 80px;
+            left: 20px;
+            background: rgba(0, 0, 0, 0.8);
+            padding: 15px;
+            border-radius: 8px;
+            border: 1px solid var(--border);
+        }
+    </style>
+</head>
+
+<body>
+    <div class="header">
+        <div class="logo"><i class="fas fa-project-diagram"></i> ATHENA GRAPH</div>
+        <div>
+            <a href="/" class="btn"><i class="fas fa-arrow-left"></i> Dashboard</a>
+            <button class="btn btn-primary" onclick="exportGraph()"><i class="fas fa-download"></i> Export
+                GraphML</button>
+        </div>
+    </div>
+
+    <div id="network"></div>
+
+    <div class="controls">
+        <h3 style="margin-top:0;">Controls</h3>
+        <p>Zoom: Scroll</p>
+        <p>Pan: Drag</p>
+        <p>Select: Click Node</p>
+    </div>
+
+    <script>
+        // Sample Data for Visualization until backend is fully hooked up
+        const nodes = new vis.DataSet([
+            { id: 1, label: 'Target', shape: 'dot', color: '#ef4444', size: 30 },
+            { id: 2, label: 'Email 1', shape: 'dot', color: '#6366f1' },
+            { id: 3, label: 'Domain', shape: 'dot', color: '#10b981' },
+            { id: 4, label: 'IP Addr', shape: 'dot', color: '#f59e0b' },
+            { id: 5, label: 'User', shape: 'dot', color: '#6366f1' },
+        ]);
+
+        const edges = new vis.DataSet([
+            { from: 1, to: 2 },
+            { from: 1, to: 3 },
+            { from: 3, to: 4 },
+            { from: 2, to: 5 },
+        ]);
+
+        const container = document.getElementById('network');
+        const data = { nodes: nodes, edges: edges };
+        const options = {
+            nodes: {
+                font: { color: '#e2e8f0' },
+                borderWidth: 2
+            },
+            physics: {
+                stabilization: false,
+                barnesHut: { gravitationalConstant: -80000, springConstant: 0.001, springLength: 200 }
+            }
+        };
+        const network = new vis.Network(container, data, options);
+
+        function exportGraph() {
+            // Call backend export endpoint
+            window.location.href = '/api/export/graphml/current';
+        }
+    </script>
+</body>
+
+</html>

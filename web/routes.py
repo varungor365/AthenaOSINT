@@ -81,6 +81,21 @@ def index():
     """Render the main dashboard."""
     return render_template('dashboard.html')
 
+@app.route('/graph')
+@login_required
+def graph_view():
+    return render_template('graph_view.html')
+
+@app.route('/history')
+@login_required
+def history_view():
+    return render_template('history.html')
+
+@app.route('/settings')
+@login_required
+def settings_view():
+    return render_template('settings.html')
+
 
 @app.route('/api/modules', methods=['GET'])
 def get_modules():
