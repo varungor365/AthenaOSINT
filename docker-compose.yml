@@ -1,0 +1,22 @@
+version: '3.8'
+
+services:
+  athena-web:
+    build: .
+    container_name: athena_osint
+    restart: always
+    ports:
+      - "5000:5000"
+    volumes:
+      - .:/app
+    environment:
+      - FLASK_ENV=production
+      - REDIS_URL=redis://redis:6379/0
+    depends_on:
+      - redis
+
+  redis:
+    image: redis:alpine
+    container_name: athena_redis
+    ports:
+      - "6379:6379"
