@@ -27,6 +27,140 @@ from intelligence.automator import Automator
 class AthenaBot:
     """Telegram bot for AthenaOSINT."""
     
+    # Admin user info
+    ADMIN_USER_ID = 796354588
+    ADMIN_USERNAME = "hackingmasterr"
+    
+    # Module descriptions with emojis and details
+    MODULE_INFO = {
+        'sherlock': {
+            'emoji': '👤',
+            'name': 'Sherlock',
+            'desc': 'Find usernames across 400+ social networks',
+            'target': 'Username',
+            'category': 'Social Media'
+        },
+        'holehe': {
+            'emoji': '📧',
+            'name': 'Holehe',
+            'desc': 'Check email registration on 120+ websites',
+            'target': 'Email',
+            'category': 'Email Intelligence'
+        },
+        'leak_checker': {
+            'emoji': '🔓',
+            'name': 'Leak Checker',
+            'desc': 'Search data breaches and password leaks',
+            'target': 'Email/Username',
+            'category': 'Security'
+        },
+        'theharvester': {
+            'emoji': '🌐',
+            'name': 'TheHarvester',
+            'desc': 'Gather emails, subdomains, IPs from search engines',
+            'target': 'Domain',
+            'category': 'Reconnaissance'
+        },
+        'subfinder': {
+            'emoji': '🔍',
+            'name': 'Subfinder',
+            'desc': 'Discover subdomains using passive sources',
+            'target': 'Domain',
+            'category': 'DNS Recon'
+        },
+        'wayback': {
+            'emoji': '⏰',
+            'name': 'Wayback Machine',
+            'desc': 'Access archived website versions and history',
+            'target': 'Domain/URL',
+            'category': 'Archives'
+        },
+        'nuclei': {
+            'emoji': '🛡️',
+            'name': 'Nuclei',
+            'desc': 'Scan for vulnerabilities and misconfigurations',
+            'target': 'Domain/IP',
+            'category': 'Security Scanning'
+        },
+        'dnsdumpster': {
+            'emoji': '🌍',
+            'name': 'DNSDumpster',
+            'desc': 'DNS reconnaissance and mapping',
+            'target': 'Domain',
+            'category': 'DNS Analysis'
+        },
+        'exiftool': {
+            'emoji': '📷',
+            'name': 'ExifTool',
+            'desc': 'Extract metadata from images and files',
+            'target': 'File/Image',
+            'category': 'Forensics'
+        },
+        'auto_dorker': {
+            'emoji': '🔎',
+            'name': 'Auto Dorker',
+            'desc': 'Automated Google Dorks for sensitive files',
+            'target': 'Domain',
+            'category': 'Google Hacking'
+        },
+        'cloud_hunter': {
+            'emoji': '☁️',
+            'name': 'Cloud Hunter',
+            'desc': 'Find exposed cloud storage buckets',
+            'target': 'Domain/Company',
+            'category': 'Cloud Security'
+        },
+        'crypto_hunter': {
+            'emoji': '₿',
+            'name': 'Crypto Hunter',
+            'desc': 'Track cryptocurrency addresses and transactions',
+            'target': 'Crypto Address',
+            'category': 'Blockchain'
+        },
+        'profile_scraper': {
+            'emoji': '📱',
+            'name': 'Profile Scraper',
+            'desc': 'Extract detailed social media profile data',
+            'target': 'Username/Profile',
+            'category': 'Social Media'
+        },
+        'sentiment': {
+            'emoji': '💭',
+            'name': 'Sentiment Analysis',
+            'desc': 'Analyze sentiment and reputation online',
+            'target': 'Username/Brand',
+            'category': 'Analysis'
+        },
+        'ocr': {
+            'emoji': '📸',
+            'name': 'OCR Scanner',
+            'desc': 'Extract text from images using Tesseract',
+            'target': 'Image',
+            'category': 'Forensics'
+        },
+        'email_permutator': {
+            'emoji': '✉️',
+            'name': 'Email Permutator',
+            'desc': 'Generate and verify email address variations',
+            'target': 'Name + Domain',
+            'category': 'Email Intelligence'
+        },
+        'job_hunter': {
+            'emoji': '💼',
+            'name': 'Job Hunter',
+            'desc': 'Analyze job postings for tech stack intelligence',
+            'target': 'Company',
+            'category': 'Business Intelligence'
+        },
+        'canary_checker': {
+            'emoji': '🐦',
+            'name': 'Canary Checker',
+            'desc': 'Detect honeypots and monitoring systems',
+            'target': 'Domain/IP',
+            'category': 'OPSEC'
+        }
+    }
+    
     def __init__(self, token: str):
         """Initialize the bot.
         
@@ -40,30 +174,53 @@ class AthenaBot:
     
     async def start_command(self, update: Update, context: ContextTypes.DEFAULT_TYPE):
         """Handle /start command."""
-        welcome_message = """
-🔍 **AthenaOSINT Bot**
+        user = update.effective_user
+        welcome_message = f"""
+🦅 **AthenaOSINT Intelligence Bot** 🦅
 
-Welcome to AthenaOSINT - Advanced Open Source Intelligence Framework!
+Welcome {user.first_name}! (@{user.username or 'user'})
+Bot: @ANTHENAa_bot
 
-**Available Commands:**
-• `/scan <target>` - Run a standard OSINT scan
-• `/quickscan <target>` - Fast scan with essential modules
-• `/fullscan <target>` - Comprehensive scan with all modules
-• `/deepscan <target> <depth>` - Recursive scan with intelligence
-• `/modules` - List available OSINT modules
-• `/status` - Check your current scan status
-• `/help` - Show this help message
+Advanced Open Source Intelligence Framework for comprehensive target reconnaissance.
 
-**Examples:**
-• `/scan john.doe@example.com`
-• `/quickscan johndoe`
-• `/fullscan example.com`
-• `/deepscan johndoe 2`
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+📋 **SCAN COMMANDS**
 
-⚠️ **Note:** Scans may take several minutes. You'll be notified when complete.
+🎯 `/scan <target>`
+Standard OSINT scan with core modules
+Example: `/scan john.doe@gmail.com`
+
+⚡ `/quickscan <target>`
+Fast scan (2-3 min) - Essential modules only
+Example: `/quickscan johndoe`
+
+🔥 `/fullscan <target>`
+Comprehensive scan (5-10 min) - All modules
+Example: `/fullscan example.com`
+
+🕵️ `/deepscan <target> [depth]`
+Recursive intelligence scan with auto-discovery
+Example: `/deepscan johndoe 2`
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+🛠️ **UTILITY COMMANDS**
+
+📦 `/modules` - View all OSINT modules with descriptions
+📊 `/status` - Check your current scan progress
+❓ `/help` - Show this help menu
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+⚠️ **IMPORTANT NOTES**
+
+• Scans can take 2-15 minutes depending on scope
+• One scan per user at a time
+• You'll receive real-time updates
+• Results include detailed reports
+
+🔐 Use responsibly and ethically!
         """
         await update.message.reply_text(welcome_message, parse_mode='Markdown')
-        logger.info(f"User {update.effective_user.id} started the bot")
+        logger.info(f"User {user.id} ({user.username}) started the bot")
     
     async def help_command(self, update: Update, context: ContextTypes.DEFAULT_TYPE):
         """Handle /help command."""
@@ -74,13 +231,34 @@ Welcome to AthenaOSINT - Advanced Open Source Intelligence Framework!
         try:
             modules = get_available_modules()
             
-            message = "📦 **Available OSINT Modules:**\n\n"
+            message = "📦 **OSINT MODULES CATALOG**\n"
+            message += "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━\n\n"
             
+            # Group by category
+            categories = {}
             for name, info in modules.items():
-                status = "✅" if info['available'] else "❌"
-                message += f"{status} **{name}**\n"
-                message += f"   _{info['description']}_\n"
-                message += f"   Target: {info['target_type']}\n\n"
+                mod_info = self.MODULE_INFO.get(name, {})
+                category = mod_info.get('category', 'Other')
+                if category not in categories:
+                    categories[category] = []
+                categories[category].append((name, info, mod_info))
+            
+            for category, mods in sorted(categories.items()):
+                message += f"\n**{category.upper()}**\n"
+                for name, info, mod_info in mods:
+                    status = "🟢" if info['available'] else "🔴"
+                    emoji = mod_info.get('emoji', '🔧')
+                    desc = mod_info.get('desc', info.get('description', 'OSINT module'))
+                    target = mod_info.get('target', info.get('target_type', 'Any'))
+                    
+                    message += f"\n{status} {emoji} **{name}**\n"
+                    message += f"   📝 {desc}\n"
+                    message += f"   🎯 Target: {target}\n"
+            
+            message += "\n━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━\n"
+            message += f"**Total Modules:** {len(modules)}\n"
+            available = sum(1 for m in modules.values() if m['available'])
+            message += f"**Available:** {available}/{len(modules)}\n"
             
             await update.message.reply_text(message, parse_mode='Markdown')
             logger.info(f"User {update.effective_user.id} requested modules list")
