@@ -6,19 +6,22 @@ This module provides the web API and dashboard for running OSINT scans.
 
 import threading
 import time
-from flask import render_template, request, jsonify, send_file
+from flask import render_template, request, jsonify, send_file, redirect, url_for, session
 from flask_socketio import emit
 from pathlib import Path
 from loguru import logger
+import functools
+from io import BytesIO
 
-from web import app, socketio, create_app
+from web import create_app
 from config import get_config
 from core.engine import AthenaEngine
 from core.validators import validate_target, detect_target_type
 from modules import get_available_modules
-import functools
-from flask import redirect, url_for, session, send_file
-from io import BytesIO
+
+# Initialize app FIRST
+app, socketio = create_app()
+config = get_config()
 
 # Simple Auth Decorator
 def login_required(f):
@@ -63,11 +66,6 @@ def export_graphml(scan_id):
         )
     except Exception as e:
         return str(e), 500
-
-
-# Initialize app
-app, socketio = create_app()
-config = get_config()
 
 
 @app.route('/')
