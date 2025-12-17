@@ -43,3 +43,7 @@ ratelimit>=2.2.1
 
 # Database (optional for future)
 SQLAlchemy>=2.0.23
+
+# Graph Analysis
+networkx>=3.1
+python-louvain>=0.16

@@ -163,6 +163,24 @@ class Profile:
         for ip in self.related_ips:
             add_node(f"ip_{ip}", ip, 'ip')
             
+        # --- Community Detection ---
+        try:
+            from intelligence.community_detector import CommunityDetector
+            detector = CommunityDetector()
+            partition = detector.detect_communities(nodes, edges)
+            
+            # Enriched nodes with community info
+            for node in nodes:
+                node_id = node['id']
+                if node_id in partition:
+                    node['community'] = partition[node_id]
+                    # Optional: Override group color based on community? 
+                    # For now, we keep semantic group (email/user) but add metadata
+                    node['title'] = f"Cluster: {partition[node_id]}"
+                    
+        except ImportError:
+            pass
+            
         return {'nodes': nodes, 'edges': edges}
 
 
