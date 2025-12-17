@@ -1,0 +1,257 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>AthenaOSINT Dashboard</title>
+    <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css" rel="stylesheet">
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/socket.io/4.0.1/socket.io.js"></script>
+    <style>
+        :root {
+            --primary: #667eea;
+            --secondary: #764ba2;
+            --bg: #1a1a2e;
+            --card-bg: #16213e;
+            --text: #e94560;
+            --text-light: #f8f9fa;
+        }
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            background-color: var(--bg);
+            color: var(--text-light);
+            margin: 0;
+            padding: 0;
+            display: flex;
+            min-height: 100vh;
+        }
+        .sidebar {
+            width: 250px;
+            background-color: var(--card-bg);
+            padding: 20px;
+            box-shadow: 2px 0 10px rgba(0,0,0,0.3);
+        }
+        .logo {
+            font-size: 24px;
+            font-weight: bold;
+            color: var(--primary);
+            margin-bottom: 40px;
+            display: flex;
+            align-items: center;
+        }
+        .logo i { margin-right: 10px; }
+        .nav-item {
+            padding: 15px;
+            color: #8a8a8a;
+            cursor: pointer;
+            border-radius: 8px;
+            transition: 0.3s;
+            display: flex;
+            align-items: center;
+        }
+        .nav-item:hover, .nav-item.active {
+            background: rgba(118, 75, 162, 0.2);
+            color: var(--primary);
+        }
+        .nav-item i { margin-right: 12px; width: 20px; }
+        .main-content {
+            flex: 1;
+            padding: 30px;
+            overflow-y: auto;
+        }
+        .search-container {
+            background: var(--card-bg);
+            padding: 30px;
+            border-radius: 15px;
+            margin-bottom: 30px;
+            box-shadow: 0 4px 6px rgba(0,0,0,0.1);
+        }
+        .search-box {
+            display: flex;
+            gap: 15px;
+        }
+        input {
+            flex: 1;
+            padding: 15px;
+            border-radius: 8px;
+            border: 1px solid #333;
+            background: #0f3460;
+            color: white;
+            font-size: 16px;
+        }
+        button {
+            padding: 15px 30px;
+            border-radius: 8px;
+            border: none;
+            background: linear-gradient(135deg, var(--primary), var(--secondary));
+            color: white;
+            font-weight: bold;
+            cursor: pointer;
+            transition: 0.3s;
+        }
+        button:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 5px 15px rgba(118, 75, 162, 0.4);
+        }
+        .grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
+            gap: 20px;
+            margin-bottom: 30px;
+        }
+        .card {
+            background: var(--card-bg);
+            padding: 20px;
+            border-radius: 15px;
+            border-top: 4px solid var(--primary);
+        }
+        .card h3 { 
+            margin-top: 0; 
+            color: #8a8a8a;
+            font-size: 14px;
+            text-transform: uppercase;
+        }
+        .card .value {
+            font-size: 36px;
+            font-weight: bold;
+            margin: 10px 0;
+        }
+        .term-window {
+            background: #000;
+            padding: 20px;
+            border-radius: 10px;
+            font-family: 'Courier New', monospace;
+            color: #0f0;
+            height: 300px;
+            overflow-y: auto;
+            margin-top: 20px;
+        }
+        .log-entry { margin-bottom: 5px; }
+        .hidden { display: none; }
+    </style>
+</head>
+<body>
+    <div class="sidebar">
+        <div class="logo">
+            <i class="fas fa-brain"></i> AthenaOSINT
+        </div>
+        <div class="nav-item active">
+            <i class="fas fa-search"></i> New Scan
+        </div>
+        <div class="nav-item">
+            <i class="fas fa-history"></i> History
+        </div>
+        <div class="nav-item">
+            <i class="fas fa-network-wired"></i> Vision Graph
+        </div>
+        <div class="nav-item">
+            <i class="fas fa-cog"></i> Settings
+        </div>
+    </div>
+
+    <div class="main-content">
+        <div class="search-container">
+            <h2>Start Investigation</h2>
+            <div class="search-box">
+                <input type="text" id="targetInput" placeholder="Enter username, email, or domain...">
+                <button onclick="startScan()">Analyze <i class="fas fa-bolt"></i></button>
+            </div>
+        </div>
+
+        <div id="resultsArea" class="hidden">
+            <div class="grid">
+                <div class="card">
+                    <h3>Risk Score</h3>
+                    <div class="value" id="riskScore">--</div>
+                </div>
+                <div class="card">
+                    <h3>Breaches Found</h3>
+                    <div class="value" id="breachCount">--</div>
+                </div>
+                <div class="card">
+                    <h3>Accounts</h3>
+                    <div class="value" id="accountCount">--</div>
+                </div>
+                <div class="card">
+                    <h3>Verified Identity</h3>
+                    <div class="value" style="font-size: 1.2rem;" id="identityStatus">Unknown</div>
+                </div>
+            </div>
+
+            <div class="card">
+                <h3>Live Operation Log</h3>
+                <div class="term-window" id="termWindow">
+                    <div class="log-entry">> System Ready. Priority: Maximum.</div>
+                </div>
+            </div>
+            
+             <div class="card" style="margin-top: 20px">
+                <h3>AI Insights</h3>
+                 <div id="aiInsights" style="padding: 10px; background: #222; border-radius: 5px;">
+                     Waiting for analysis...
+                 </div>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        const socket = io();
+        const termWindow = document.getElementById('termWindow');
+        
+        socket.on('connect', () => {
+            log('Connected to Athena Core.');
+        });
+
+        socket.on('scan_update', (data) => {
+            log(data.message, data.status);
+        });
+        
+        socket.on('scan_complete', (data) => {
+            log('Scan Complete!', 'success');
+            renderResults(data.data);
+        });
+
+        function startScan() {
+            const target = document.getElementById('targetInput').value;
+            if(!target) return;
+            
+            document.getElementById('resultsArea').classList.remove('hidden');
+            log(`Initiating scan for: ${target}...`);
+            socket.emit('start_scan', { target: target, type: 'full' });
+        }
+
+        function log(msg, type='info') {
+            const div = document.createElement('div');
+            div.className = 'log-entry';
+            const timestamp = new Date().toLocaleTimeString();
+            let color = '#0f0';
+            if(type === 'error') color = 'red';
+            if(type === 'warning') color = 'orange';
+            
+            div.innerHTML = `<span style="color: #666">[${timestamp}]</span> <span style="color: ${color}">${msg}</span>`;
+            termWindow.appendChild(div);
+            termWindow.scrollTop = termWindow.scrollHeight;
+        }
+        
+        function renderResults(data) {
+            // Update stats
+            const analysis = data.raw_data.intelligence_analysis || {};
+            document.getElementById('riskScore').innerText = analysis.risk_score || 0;
+            document.getElementById('breachCount').innerText = data.breaches.length;
+            document.getElementById('accountCount').innerText = Object.keys(data.usernames).length;
+            
+            // Check identity resolution
+            const resolution = data.raw_data.identity_resolution || {};
+            if(resolution.confidence_score > 50) {
+                 document.getElementById('identityStatus').innerHTML = `<span style="color:#0f0">Verified (${resolution.confidence_score}%)</span>`;
+            } else {
+                 document.getElementById('identityStatus').innerText = "Low Confidence";
+            }
+            
+            // AI insights
+            if (analysis.ai_insights) {
+                 document.getElementById('aiInsights').innerText = analysis.ai_insights;
+            }
+        }
+    </script>
+</body>
+</html>

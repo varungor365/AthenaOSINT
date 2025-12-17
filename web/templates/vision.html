@@ -1,0 +1,179 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Athena Vision - Graph Intelligence</title>
+    <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css" rel="stylesheet">
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/socket.io/4.0.1/socket.io.js"></script>
+    <script type="text/javascript" src="https://unpkg.com/vis-network/standalone/umd/vis-network.min.js"></script>
+    <style>
+        :root {
+            --primary: #667eea;
+            --secondary: #764ba2;
+            --bg: #1a1a2e;
+            --card-bg: #16213e;
+            --text: #e94560;
+            --text-light: #f8f9fa;
+        }
+
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            background-color: var(--bg);
+            color: var(--text-light);
+            margin: 0;
+            padding: 0;
+            overflow: hidden;
+            /* Full screen graph */
+        }
+
+        #mynetwork {
+            width: 100vw;
+            height: 100vh;
+            background: #000;
+        }
+
+        .overlay {
+            position: absolute;
+            top: 20px;
+            left: 20px;
+            background: rgba(22, 33, 62, 0.9);
+            padding: 20px;
+            border-radius: 10px;
+            border: 1px solid var(--primary);
+            max-width: 300px;
+            z-index: 100;
+        }
+
+        .overlay h2 {
+            margin: 0 0 10px 0;
+            font-size: 1.2rem;
+            color: var(--primary);
+        }
+
+        .legend-item {
+            display: flex;
+            align-items: center;
+            margin: 5px 0;
+            font-size: 0.9rem;
+        }
+
+        .dot {
+            width: 10px;
+            height: 10px;
+            border-radius: 50%;
+            margin-right: 10px;
+        }
+
+        .btn {
+            background: var(--primary);
+            border: none;
+            padding: 10px 20px;
+            color: white;
+            border-radius: 5px;
+            cursor: pointer;
+            text-decoration: none;
+            display: inline-block;
+            margin-top: 10px;
+        }
+    </style>
+</head>
+
+<body>
+
+    <div class="overlay">
+        <h2><i class="fas fa-project-diagram"></i> Athena Vision</h2>
+        <p>Interactive Intelligence Graph</p>
+
+        <div id="legend">
+            <div class="legend-item">
+                <div class="dot" style="background: #e94560;"></div>Target
+            </div>
+            <div class="legend-item">
+                <div class="dot" style="background: #ffa600;"></div>Email
+            </div>
+            <div class="legend-item">
+                <div class="dot" style="background: #764ba2;"></div>Username
+            </div>
+            <div class="legend-item">
+                <div class="dot" style="background: #00d2ff;"></div>Domain/IP
+            </div>
+        </div>
+
+        <a href="/" class="btn"><i class="fas fa-arrow-left"></i> Back to Dashboard</a>
+        <div style="margin-top: 10px; font-size: 0.8em; color: #888;">
+            Nodes can be dragged. Scroll to zoom.
+        </div>
+    </div>
+
+    <div id="mynetwork"></div>
+
+    <script>
+        // Initialize with socket to listen for updates (optional, for real-time)
+        // For now, we assume data is passed via localStorage or re-fetched.
+        // Let's implement a simple "Listen for latest scan" mode.
+
+        const socket = io();
+        let network = null;
+
+        const container = document.getElementById('mynetwork');
+        const options = {
+            nodes: {
+                shape: 'dot',
+                size: 16,
+                font: {
+                    color: '#ffffff'
+                },
+                borderWidth: 2
+            },
+            edges: {
+                width: 1,
+                color: { color: '#ffffff', opacity: 0.3 },
+                smooth: {
+                    type: "continuous"
+                }
+            },
+            physics: {
+                stabilization: false,
+                barnesHut: {
+                    gravitationalConstant: -8000,
+                    springConstant: 0.04,
+                    springLength: 95
+                }
+            },
+            groups: {
+                target: { color: { background: '#e94560', border: '#ffffff' }, size: 30 },
+                email: { color: { background: '#ffa600', border: '#ffffff' } },
+                username: { color: { background: '#764ba2', border: '#ffffff' } },
+                domain: { color: { background: '#00d2ff', border: '#ffffff' } },
+                subdomain: { color: { background: '#00d2ff', border: '#ffffff' }, size: 10 },
+                ip: { color: { background: '#00ffaa', border: '#ffffff' } }
+            }
+        };
+
+        socket.on('connect', () => {
+            console.log("Connected to Vision");
+        });
+
+        socket.on('scan_complete', (data) => {
+            if (data.graph) {
+                renderGraph(data.graph);
+            }
+        });
+
+        function renderGraph(data) {
+            const nodes = new vis.DataSet(data.nodes);
+            const edges = new vis.DataSet(data.edges);
+
+            const graphData = { nodes: nodes, edges: edges };
+            network = new vis.Network(container, graphData, options);
+        }
+
+        // Check if there's cached data from main dashboard (for demo purposes)
+        // In a real app, we'd query per session ID.
+
+    </script>
+</body>
+
+</html>
