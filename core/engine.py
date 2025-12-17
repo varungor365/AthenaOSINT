@@ -192,7 +192,8 @@ class AthenaEngine:
         target_query: str,
         target_type: str = 'unknown',
         use_intelligence: bool = False,
-        quiet: bool = False
+        quiet: bool = False,
+        socketio = None # Added support for generic socketio
     ):
         """Initialize the AthenaEngine.
         
@@ -201,11 +202,13 @@ class AthenaEngine:
             target_type: Type of target (email, domain, username, etc.)
             use_intelligence: Enable intelligent analysis
             quiet: Suppress progress messages
+            socketio: Optional socketio instance for real-time updates
         """
         self.config = get_config()
         self.profile = Profile(target_query=target_query, target_type=target_type)
         self.use_intelligence = use_intelligence
         self.quiet = quiet
+        self.socketio = socketio
         self.start_time = None
         self.analyzer = None
         
@@ -238,7 +241,29 @@ class AthenaEngine:
         color = colors.get(status, Fore.WHITE)
         symbol = symbols.get(status, '•')
         
+        # Console Output
         print(f"{color}[{symbol}] {message}{Style.RESET_ALL}")
+        
+        # Socket Output (Real-time UI)
+        if self.socketio:
+            try:
+                self.socketio.emit('scan_update', {
+                    'message': message,
+                    'status': status,
+                    'progress': self._calculate_progress()
+                })
+            except Exception as e:
+                logger.error(f"Socket emit failed: {e}")
+
+    def _calculate_progress(self) -> int:
+        """Estimate progress based on modules run."""
+        # Simple heuristic
+        if not self.start_time: return 0
+        # If we have a module plan length, we could use that. 
+        # For now, just a placeholder or based on time/modules.
+        # Let's say we assume 10 modules max for 100% or just incremental.
+        count = len(self.profile.modules_run)
+        return min(count * 10, 95) # Cap at 95 until done
     
     def run_scan(self, module_list: List[str]):
         """Run OSINT scan with specified modules.

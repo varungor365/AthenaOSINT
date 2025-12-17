@@ -394,87 +394,40 @@ def run_scan_background(scan_id: str, target: str, modules: list, use_intelligen
             target_query=target,
             target_type=target_type,
             use_intelligence=use_intelligence,
-            quiet=True
+            quiet=True,
+            socketio=socketio # Pass global socketio for real-time module updates
         )
         
-        # Run each module with progress updates
-        total_modules = len(modules)
-        for idx, module_name in enumerate(modules):
-            progress = int(10 + (idx / total_modules) * 80)
-            
-            socketio.emit('scan_update', {
-                'scan_id': scan_id,
-                'status': 'progress',
-                'message': f'Running {module_name} module...',
-                'progress': progress,
-                'current_module': module_name
-            })
-            
-            try:
-                engine._run_module(module_name)
-            except Exception as e:
-                logger.error(f"Module {module_name} failed: {e}")
-                socketio.emit('scan_update', {
-                    'scan_id': scan_id,
-                    'status': 'warning',
-                    'message': f'Module {module_name} failed: {str(e)}',
-                    'progress': progress
-                })
+        # Run scan using the engine's orchestrator (which handles per-module emission now)
+        engine.run_scan(modules)
+        # Final Report Generation
+        report_path = engine.generate_report(output_format='json')
         
-        # Finish scan
-        engine.profile.scan_duration = time.time() - engine.start_time if engine.start_time else 0
-        
-        # Run intelligence if enabled
-        if use_intelligence:
-            socketio.emit('scan_update', {
-                'scan_id': scan_id,
-                'status': 'progress',
-                'message': 'Running intelligence analysis...',
-                'progress': 90
-            })
-            
-            try:
-                from intelligence.analyzer import IntelligenceAnalyzer
-                analyzer = IntelligenceAnalyzer()
-                analyzer.analyze_profile(engine.profile)
-            except Exception as e:
-                logger.error(f"Intelligence analysis failed: {e}")
-        
-        # Generate reports
-        socketio.emit('scan_update', {
-            'scan_id': scan_id,
-            'status': 'progress',
-            'message': 'Generating reports...',
-            'progress': 95
-        })
-        
-        json_report = engine.generate_report('json', custom_filename=f"web_{scan_id}")
-        html_report = engine.generate_report('html', custom_filename=f"web_{scan_id}")
-        
-        # Send completion with results
+        # Load Report Data for Frontend
+        with open(report_path, 'r', encoding='utf-8') as f:
+            report_data = json.load(f)
+
+        # Emit Completion
         socketio.emit('scan_update', {
             'scan_id': scan_id,
             'status': 'completed',
-            'message': 'Scan completed successfully!',
+            'message': 'Scan completed successfully',
             'progress': 100,
-            'results': engine.profile.to_dict(),
-            'summary': engine.profile.get_summary(),
-            'reports': {
-                'json': str(json_report),
-                'html': str(html_report)
-            }
+            'report': report_data
         })
         
-        logger.info(f"Scan {scan_id} completed successfully")
-    
     except Exception as e:
-        logger.error(f"Scan {scan_id} failed: {e}")
+        logger.error(f"Scan execution failed: {e}")
         socketio.emit('scan_update', {
             'scan_id': scan_id,
             'status': 'failed',
             'message': f'Scan failed: {str(e)}',
-            'error': str(e)
+            'progress': 0
         })
+    # Function ends here, cleaned up exception block is above.
+    pass
+    # End of run_scan_background
+    pass
 
 
 @app.route('/api/reports/<filename>', methods=['GET'])
