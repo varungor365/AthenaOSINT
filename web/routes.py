@@ -162,31 +162,43 @@ def restart_system():
     except Exception as e:
         return jsonify({'success': False, 'error': str(e)}), 500
 
-@app.route('/api/upload', methods=['POST'])
+@app.route('/api/upload', methods=['POST', 'OPTIONS'])
 def upload_data():
     """Upload breach data for the Self-Learning system."""
-    if 'files' not in request.files and 'file' not in request.files:
-        return jsonify({'success': False, 'error': 'No file part'}), 400
+    # Handle CORS preflight
+    if request.method == 'OPTIONS':
+        return jsonify({'success': True}), 200
     
-    files = request.files.getlist('files')
-    if not files and 'file' in request.files:
-        files = [request.files['file']]
+    try:
+        if 'files' not in request.files and 'file' not in request.files:
+            return jsonify({'success': False, 'error': 'No file part'}), 400
         
-    uploaded_count = 0
-    for file in files:
-        if file.filename == '':
-            continue
+        files = request.files.getlist('files')
+        if not files and 'file' in request.files:
+            files = [request.files['file']]
         
-        if file:
-            filename = secure_filename(file.filename)
-            save_path = UPLOAD_DIR / filename
-            file.save(str(save_path))
-            uploaded_count += 1
+        # Ensure upload directory exists
+        UPLOAD_DIR.mkdir(parents=True, exist_ok=True)
+        
+        uploaded_count = 0
+        for file in files:
+            if file.filename == '':
+                continue
             
-    return jsonify({
-        'success': True, 
-        'message': f'Uploaded {uploaded_count} files. The Background System is analyzing them.'
-    })
+            if file:
+                filename = secure_filename(file.filename)
+                save_path = UPLOAD_DIR / filename
+                file.save(str(save_path))
+                uploaded_count += 1
+                logger.info(f"File uploaded: {filename}")
+        
+        return jsonify({
+            'success': True, 
+            'message': f'Uploaded {uploaded_count} file(s). The Background System is analyzing them.'
+        })
+    except Exception as e:
+        logger.error(f"Upload error: {e}")
+        return jsonify({'success': False, 'error': str(e)}), 500
 
 @app.route('/api/uploads', methods=['GET'])
 def get_uploads():
