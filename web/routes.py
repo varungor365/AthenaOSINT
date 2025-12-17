@@ -406,6 +406,19 @@ def run_scan_background(scan_id: str, target: str, modules: list, use_intelligen
         with open(report_path, 'r', encoding='utf-8') as f:
             report_data = json.load(f)
 
+        # Save scan to history
+        _save_scan_history({
+            'scan_id': scan_id,
+            'target': target,
+            'target_type': target_type,
+            'modules': modules,
+            'use_intelligence': use_intelligence,
+            'status': 'completed',
+            'timestamp': datetime.now().isoformat(),
+            'report_path': str(report_path),
+            'summary': report_data.get('summary', {})
+        })
+
         # Emit Completion
         socketio.emit('scan_update', {
             'scan_id': scan_id,
@@ -427,6 +440,116 @@ def run_scan_background(scan_id: str, target: str, modules: list, use_intelligen
     pass
     # End of run_scan_background
     pass
+
+
+def _save_scan_history(scan_data: dict):
+    """Save scan to history file."""
+    try:
+        history_file = Path('data/scan_history.json')
+        history_file.parent.mkdir(parents=True, exist_ok=True)
+        
+        # Load existing history
+        if history_file.exists():
+            with open(history_file, 'r') as f:
+                history = json.load(f)
+        else:
+            history = []
+        
+        # Add new scan
+        history.insert(0, scan_data)  # Most recent first
+        
+        # Keep only last 100 scans
+        history = history[:100]
+        
+        # Save updated history
+        with open(history_file, 'w') as f:
+            json.dump(history, f, indent=2)
+            
+    except Exception as e:
+        logger.error(f"Failed to save scan history: {e}")
+
+
+@app.route('/api/history', methods=['GET'])
+def get_scan_history():
+    """Get scan history.
+    
+    Returns:
+        JSON response with scan history
+    """
+    try:
+        history_file = Path('data/scan_history.json')
+        
+        if not history_file.exists():
+            return jsonify({
+                'success': True,
+                'scans': []
+            })
+        
+        with open(history_file, 'r') as f:
+            history = json.load(f)
+        
+        return jsonify({
+            'success': True,
+            'scans': history
+        })
+    
+    except Exception as e:
+        logger.error(f"Failed to get scan history: {e}")
+        return jsonify({
+            'success': False,
+            'error': str(e)
+        }), 500
+
+
+@app.route('/api/history/<scan_id>', methods=['GET'])
+def get_scan_details(scan_id):
+    """Get details for a specific scan.
+    
+    Args:
+        scan_id: Scan ID
+        
+    Returns:
+        JSON response with scan details
+    """
+    try:
+        history_file = Path('data/scan_history.json')
+        
+        if not history_file.exists():
+            return jsonify({
+                'success': False,
+                'error': 'Scan not found'
+            }), 404
+        
+        with open(history_file, 'r') as f:
+            history = json.load(f)
+        
+        # Find scan
+        scan = next((s for s in history if s['scan_id'] == scan_id), None)
+        
+        if not scan:
+            return jsonify({
+                'success': False,
+                'error': 'Scan not found'
+            }), 404
+        
+        # Load full report if available
+        if scan.get('report_path'):
+            report_path = Path(scan['report_path'])
+            if report_path.exists():
+                with open(report_path, 'r') as f:
+                    scan['full_report'] = json.load(f)
+        
+        return jsonify({
+            'success': True,
+            'scan': scan
+        })
+    
+    except Exception as e:
+        logger.error(f"Failed to get scan details: {e}")
+        return jsonify({
+            'success': False,
+            'error': str(e)
+        }), 500
 
 
 @app.route('/api/reports/<filename>', methods=['GET'])

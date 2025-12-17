@@ -138,31 +138,63 @@
 
     <script>
         document.addEventListener('DOMContentLoaded', async () => {
-            // Mock data for demo if backend endpoint is missing
             const tbody = document.getElementById('history-body');
 
-            // In real version: await fetch('/api/history')
-            const history = [
-                { id: 'scan_001', target: 'example.com', date: '2025-12-16 14:30', modules: 5, status: 'completed' },
-                { id: 'scan_002', target: 'user_test', date: '2025-12-16 15:45', modules: 12, status: 'failed' },
-            ];
+            try {
+                // Fetch real history from API
+                const response = await fetch('/api/history');
+                const data = await response.json();
 
-            tbody.innerHTML = '';
-            history.forEach(h => {
-                const tr = document.createElement('tr');
-                tr.innerHTML = `
-                    <td style="font-family:monospace; color:var(--text-muted)">${h.id}</td>
-                    <td style="font-weight:bold; color:#6366f1;">${h.target}</td>
-                    <td>${h.date}</td>
-                    <td>${h.modules} modules</td>
-                    <td><span class="status status-${h.status}">${h.status.toUpperCase()}</span></td>
-                    <td>
-                        <button class="btn" style="padding:4px 8px; font-size:0.8rem;" onclick="alert('View Report')"><i class="fas fa-file-alt"></i></button>
-                    </td>
-                 `;
-                tbody.appendChild(tr);
-            });
+                if (!data.success || !data.scans || data.scans.length === 0) {
+                    tbody.innerHTML = '<tr><td colspan="6" class="empty">No scan history found. Run your first scan!</td></tr>';
+                    return;
+                }
+
+                tbody.innerHTML = '';
+                data.scans.forEach(scan => {
+                    const date = new Date(scan.timestamp).toLocaleString();
+                    const tr = document.createElement('tr');
+                    tr.innerHTML = `
+                        <td style="font-family:monospace; color:var(--text-muted); font-size:0.85rem;">${scan.scan_id}</td>
+                        <td style="font-weight:600; color:#6366f1;">${scan.target}</td>
+                        <td style="color:var(--text-muted);">${date}</td>
+                        <td>${scan.modules.length} modules</td>
+                        <td><span class="status status-${scan.status}">${scan.status.toUpperCase()}</span></td>
+                        <td>
+                            <button class="btn" style="padding:4px 12px; font-size:0.85rem;" onclick="viewScan('${scan.scan_id}')">
+                                <i class="fas fa-eye"></i> View
+                            </button>
+                        </td>
+                     `;
+                    tbody.appendChild(tr);
+                });
+            } catch (error) {
+                console.error('Failed to load history:', error);
+                tbody.innerHTML = '<tr><td colspan="6" class="empty">Failed to load history. Please refresh.</td></tr>';
+            }
         });
+
+        async function viewScan(scanId) {
+            try {
+                const response = await fetch(`/api/history/${scanId}`);
+                const data = await response.json();
+
+                if (data.success && data.scan) {
+                    // Open detailed view or download report
+                    if (data.scan.report_path) {
+                        const reportFilename = data.scan.report_path.split('/').pop();
+                        window.open(`/api/reports/${reportFilename}`, '_blank');
+                    } else {
+                        alert('Report not found for this scan.');
+                    }
+                } else {
+                    alert('Failed to load scan details.');
+                }
+            } catch (error) {
+                console.error('Failed to view scan:', error);
+                alert('Error loading scan details.');
+            }
+        }
     </script>
 </body>
 
