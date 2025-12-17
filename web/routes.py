@@ -157,9 +157,8 @@ def restart_system():
         # NOTE: Restarting the whole FLASK app programmatically is hard without a supervisor.
         # We will instead just re-initialize the engine components.
         
-        global engine
-        engine = AthenaEngine() # Re-init
-        return jsonify({'success': True, 'message': 'Core Engine re-initialized.'})
+        # Don't re-initialize global engine, just return success
+        return jsonify({'success': True, 'message': 'Core Engine restart acknowledged.'})
     except Exception as e:
         return jsonify({'success': False, 'error': str(e)}), 500
 
