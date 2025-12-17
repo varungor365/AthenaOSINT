@@ -16,6 +16,53 @@ from config import get_config
 from core.engine import AthenaEngine
 from core.validators import validate_target, detect_target_type
 from modules import get_available_modules
+import functools
+from flask import redirect, url_for, session, send_file
+from io import BytesIO
+
+# Simple Auth Decorator
+def login_required(f):
+    @functools.wraps(f)
+    def wrapped(*args, **kwargs):
+        if config.get('AUTH_ENABLED', 'False').lower() == 'true':
+            if not session.get('logged_in'):
+                return redirect('/login')
+        return f(*args, **kwargs)
+    return wrapped
+
+@app.route('/login', methods=['GET', 'POST'])
+def login():
+    if request.method == 'POST':
+        password = request.form.get('password')
+        if password == config.get('ADMIN_PASSWORD', 'admin'):
+            session['logged_in'] = True
+            return redirect('/')
+        else:
+            return "Invalid Password", 401
+    return '<form method="post"><input type="password" name="password"><button>Login</button></form>'
+
+@app.route('/logout')
+def logout():
+    session.pop('logged_in', None)
+    return redirect('/login')
+
+@app.route('/api/export/graphml/<scan_id>')
+@login_required
+def export_graphml(scan_id):
+    """Export scan graph to GraphML."""
+    try:
+        from intelligence.graph_exporter import GraphExporter
+        # Stub: For now, generates an empty or sample graph
+        exporter = GraphExporter()
+        xml_content = exporter.export_graphml([], []) 
+        return send_file(
+            BytesIO(xml_content.encode('utf-8')),
+            mimetype='application/xml',
+            as_attachment=True,
+            download_name=f'scan_{scan_id}.graphml'
+        )
+    except Exception as e:
+        return str(e), 500
 
 
 # Initialize app
@@ -24,6 +71,7 @@ config = get_config()
 
 
 @app.route('/')
+@login_required
 def index():
     """Render the main dashboard."""
     return render_template('dashboard.html')
@@ -49,6 +97,34 @@ def get_modules():
             'error': str(e)
         }), 500
 
+
+# ... imports ...
+from werkzeug.utils import secure_filename
+from core.background_worker import BackgroundWorker, UPLOAD_DIR
+
+# Start Background Worker
+worker = BackgroundWorker()
+worker.start()
+
+@app.route('/api/upload', methods=['POST'])
+def upload_data():
+    """Upload breach data for the Self-Learning system."""
+    if 'file' not in request.files:
+        return jsonify({'success': False, 'error': 'No file part'}), 400
+        
+    file = request.files['file']
+    if file.filename == '':
+        return jsonify({'success': False, 'error': 'No selected file'}), 400
+        
+    if file:
+        filename = secure_filename(file.filename)
+        save_path = UPLOAD_DIR / filename
+        file.save(str(save_path))
+        
+        return jsonify({
+            'success': True, 
+            'message': f'File {filename} uploaded. The Background System is now analyzing it.'
+        })
 
 @app.route('/api/service-status', methods=['GET'])
 def check_service_status():

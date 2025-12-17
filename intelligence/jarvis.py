@@ -47,52 +47,62 @@ Do not allow dangerous system commands outside of the defined scopes.
 """
 
     def process_input(self, user_text: str) -> Dict[str, Any]:
-        """Process user input and determine action."""
+        """
+        CLI Command Processor.
+        Commands:
+        - scan [target]
+        - scan [target] --deep
+        - modules (list all tools)
+        - help
+        """
+        user_text = user_text.strip()
         
-        # 1. Check for basic intent via Regex (Faster than LLM for simple stuff)
-        scan_match = re.search(r'(scan|check|investigate|target)\s+([a-zA-Z0-9._@-]+)', user_text, re.IGNORECASE)
+        # 1. HELP
+        if user_text.lower() in ['help', '?', 'commands']:
+            return {
+                "type": "chat",
+                "response": "COMMANDS:\n- scan [target]: Run auto-scan\n- modules: List tools\n- scan [target] --deep: Full analysis"
+            }
+
+        # 2. SCAN intent (Regex)
+        # Matches: scan 1.2.3.4, check user, etc.
+        scan_match = re.search(r'(?:scan|check|target)\s+([a-zA-Z0-9._@-]+)', user_text, re.IGNORECASE)
         
-        # 2. If simple scan, return immediately
-        if scan_match and len(user_text.split()) < 10:
-             target = scan_match.group(2)
-             return {
+        if scan_match:
+            target = scan_match.group(1)
+            
+            # Intelligent Routing based on Registry
+            # Identify target type basically
+            modules_to_run = []
+            from modules.registry import MODULE_REGISTRY
+            
+            # Simple heuristic
+            if '@' in target:
+                target_type = 'email'
+            elif target.replace('.','').isdigit():
+                target_type = 'ip'
+            elif '.' in target:
+                target_type = 'domain'
+            else:
+                target_type = 'username'
+                
+            # Select relevant tools
+            for name, meta in MODULE_REGISTRY.items():
+                if meta['type'] == target_type or meta['type'] == 'all':
+                    modules_to_run.append(name)
+                    
+            return {
                  "type": "action",
                  "action": "scan",
                  "target": target,
-                 "response": f"Affirmative. Initiating scan protocols for {target}."
-             }
+                 "modules": modules_to_run,
+                 "response": f"Initializing scan on {target} ({target_type}). Selected {len(modules_to_run)} relevant modules."
+            }
 
-        # 3. For complex requests, consult LLM
-        response_text = self.llm.generate_text(
-            prompt=f"User said: '{user_text}'. Analyze intent and respond as per system instructions.",
-            system_prompt=self.system_prompt,
-            max_tokens=500
-        )
-        
-        # Try to parse JSON from LLM
-        try:
-            # Extract JSON if embedded in text
-            json_match = re.search(r'\{.*\}', response_text, re.DOTALL)
-            if json_match:
-                data = json.loads(json_match.group(0))
-                
-                if data.get('tool') == 'SCAN':
-                    return {
-                        "type": "action",
-                        "action": "scan",
-                        "target": data.get('target'),
-                        "response": f"Running detailed scan on {data.get('target')}."
-                    }
-                    
-                if data.get('tool') == 'CODE':
-                    return self._generate_code_action(data.get('filename'), data.get('prompt'))
-                    
-        except Exception:
-            pass # Fallback to chat
-            
+        # 3. CHAT (Fallback)
         return {
-            "type": "chat",
-            "response": response_text
+            "type": "chat", 
+            "response": f"Command not recognized: '{user_text}'. Type 'help' for options."
         }
 
     def _generate_code_action(self, filename: str, prompt: str) -> Dict[str, Any]:

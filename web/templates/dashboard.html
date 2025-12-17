@@ -370,16 +370,50 @@
 
                 <div class="form-group">
                     <label>Select Modules</label>
-                    <div class="module-controls" style="margin-bottom: 15px; display: flex; gap: 10px; flex-wrap: wrap;">
-                        <input type="text" id="module-search" placeholder="🔍 Search modules..." 
+                    <div class="module-controls"
+                        style="margin-bottom: 15px; display: flex; gap: 10px; flex-wrap: wrap;">
+                        <!-- Upload Button -->
+                        <div style="position: relative; overflow: hidden; display: inline-block;">
+                            <button class="button button-small" style="background: #8b5cf6;">📂 Upload Breach
+                                Data</button>
+                            <input type="file" id="upload-input"
+                                style="font-size: 100px; position: absolute; left: 0; top: 0; opacity: 0; cursor: pointer;">
+                        </div>
+
+                        <input type="text" id="module-search" placeholder="🔍 Search modules..."
                             style="flex: 1; min-width: 200px; padding: 8px 12px; border: 2px solid var(--border); border-radius: 6px;">
-                        <button class="button button-small" id="select-all" style="padding: 8px 16px;">Select All</button>
-                        <button class="button button-small" id="deselect-all" style="padding: 8px 16px;">Deselect All</button>
-                        <button class="button button-small" id="check-services" style="padding: 8px 16px; background: #10b981;">🔄 Check Services</button>
+                        <button class="button button-small" id="select-all" style="padding: 8px 16px;">Select
+                            All</button>
+                        <button class="button button-small" id="deselect-all" style="padding: 8px 16px;">Deselect
+                            All</button>
+                        <button class="button button-small" id="check-services"
+                            style="padding: 8px 16px; background: #10b981;">🔄 Check Services</button>
                     </div>
-                    <div id="service-status" style="margin-bottom: 10px; padding: 10px; background: #f3f4f6; border-radius: 6px; display: none;">
+                    <div id="service-status"
+                        style="margin-bottom: 10px; padding: 10px; background: #f3f4f6; border-radius: 6px; display: none;">
                         <small><strong>Service Status:</strong> <span id="status-text">Checking...</span></small>
                     </div>
+                    <script>
+ k                        Script
+                        document.g                        tById('upload-input')                        tListener('change', async f) {
+                            file = this.files[0];
+                            if (!file) return;
+                            const formData = new FormData();
+                            formData.append('file', file);
+
+                            alert("Upload started: " + file.name + "\nThe AI Agent will process this in the background.");
+
+                            try {
+                                const res = await fetch('/api/upload', {
+                                    method: 'POST',
+                                    body: formData
+                                });
+                                const d = await res.json();
+                                if (d.success) alert(d.message);
+                                else alert("Error: " + d.error);
+                            } catch (e) { console.error(e); }
+                        });
+                    </script>
                     <div class="modules-grid" id="modules-container">
                         <!-- Modules loaded dynamically -->
                     </div>
@@ -430,280 +464,358 @@
                     <p>No scan results yet. Start a scan to see results here.</p>
                 </div>
             </div>
-        </div>
-    </div>
+            <!-- JARVIS TERMINAL -->
+            <div class="card" style="margin-top:20px; background:#1e1e1e; color:#00ff00; font-family:monospace;">
+                <h2 style="color:#00ff00; border-color:#00ff00;">💻 Jarvis Command Terminal</h2>
+                <div id="terminal-output"
+                    style="height:200px; overflow-y:auto; margin-bottom:10px; padding:10px; border:1px solid #333;">
+                    <div>> System Initialized. Type 'help' for commands.</div>
+                </div>
+                <input type="text" id="terminal-input" placeholder="Enter command..."
+                    style="width:100%; padding:10px; background:#000; color:#00ff00; border:none; outline:none;">
+            </div>
 
-    <script>
-        // Initialize SocketIO
-        const socket = io();
-        let currentScanId = null;
+            <script>
+                const termInput = document.getElementById('terminal-input');
+                const termOutput = document.getElementById('terminal-output');
 
-        // Elements
-        const targetInput = document.getElementById('target');
-        const targetTypeText = document.getElementById('target-type');
-        const startButton = document.getElementById('start-scan');
-        const progressContainer = document.getElementById('progress-container');
-        const progressFill = document.getElementById('progress-fill');
-        const statusMessages = document.getElementById('status-messages');
-        const resultsContainer = document.getElementById('results-container');
-        const noResults = document.getElementById('no-results');
-        const useIntelligence = document.getElementById('use-intelligence');
+                termInput.addEventListener('keypress', async function (e) {
+                    if (e.key === 'Enter') {
+                        const cmd = this.value;
+                        this.value = '';
+                        logTerm('> ' + cmd);
 
-        // Load modules on page load
-        loadModules();
+                        try {
+                            const res = await fetch('/api/jarvis/chat', {
+                                method: 'POST',
+                                headers: { 'Content-Type': 'application/json' },
+                                body: JSON.stringify({ message: cmd })
+                            });
+                            const data = await res.json();
+                            if (data.success && data.data) {
+                                const d = data.data;
+                                logTerm(d.response);
 
-        // Socket event listeners
-        socket.on('connect', () => {
-            console.log('Connected to server');
-        });
-
-        socket.on('scan_update', (data) => {
-            handleScanUpdate(data);
-        });
-
-        // Target validation
-        targetInput.addEventListener('input', async () => {
-            const target = targetInput.value.trim();
-            if (!target) {
-                targetTypeText.textContent = '';
-                return;
-            }
-
-            try {
-                const response = await fetch('/api/validate', {
-                    method: 'POST',
-                    headers: { 'Content-Type': 'application/json' },
-                    body: JSON.stringify({ target })
+                                if (d.type === 'action' && d.action === 'scan') {
+                                    // Trigger Scan UI
+                                    document.getElementById('target').value = d.target;
+                                    logTerm('[SYSTEM] Auto-filling target and selecting modules: ' + d.modules.join(', '));
+                                    // Auto check modules
+                                    d.modules.forEach(m => {
+                                        const cb = document.getElementById('module-' + m);
+                                        if (cb) cb.checked = true;
+                                    });
+                                    // Optional: document.getElementById('start-scan').click();
+                                }
+                            }
+                        } catch (err) {
+                            logTerm('Error: ' + err);
+                        }
+                    }
                 });
 
-                const data = await response.json();
-                if (data.valid) {
-                    targetTypeText.textContent = `✓ Detected as: ${data.target_type}`;
-                    targetTypeText.style.color = '#10b981';
-                } else {
-                    targetTypeText.textContent = '✗ Invalid target format';
-                    targetTypeText.style.color = '#ef4444';
+                function logTerm(msg) {
+                    const line = document.createElement('div');
+                    line.textContent = msg;
+                    termOutput.appendChild(line);
+                    termOutput.scrollTop = termOutput.scrollHeight;
                 }
-            } catch (error) {
-                console.error('Validation error:', error);
-            }
-        });
+            </script>
+        </div>
 
-        // Start scan button
-        startButton.addEventListener('click', async () => {
-            const target = targetInput.value.trim();
-            if (!target) {
-                alert('Please enter a target');
-                return;
-            }
+        <script>
+            // Initialize SocketIO
+            const socket = io();
+            let currentScanId = null;
 
-            const selectedModules = Array.from(
-                document.querySelectorAll('.module-checkbox input:checked')
-            ).map(cb => cb.value);
+            // Elements
+            const targetInput = document.getElementById('target');
+            const targetTypeText = document.getElementById('target-type');
+            const startButton = document.getElementById('start-scan');
+            const progressContainer = document.getElementById('progress-container');
+            const progressFill = document.getElementById('progress-fill');
+            const statusMessages = document.getElementById('status-messages');
+            const resultsContainer = document.getElementById('results-container');
+            const noResults = document.getElementById('no-results');
+            const useIntelligence = document.getElementById('use-intelligence');
 
-            if (selectedModules.length === 0) {
-                alert('Please select at least one module');
-                return;
-            }
+            // Load modules on page load
+            loadModules();
 
-            try {
-                startButton.disabled = true;
-                progressContainer.style.display = 'block';
-                resultsContainer.style.display = 'none';
-                noResults.style.display = 'none';
-                statusMessages.innerHTML = '';
+            // Socket event listeners
+            socket.on('connect', () => {
+                console.log('Connected to server');
+            });
 
-                const response = await fetch('/api/scan', {
-                    method: 'POST',
-                    headers: { 'Content-Type': 'application/json' },
-                    body: JSON.stringify({
-                        target: target,
-                        modules: selectedModules,
-                        use_intelligence: useIntelligence.checked
-                    })
-                });
+            socket.on('scan_update', (data) => {
+                handleScanUpdate(data);
+            });
 
-                const data = await response.json();
-                if (data.success) {
-                    currentScanId = data.scan_id;
-                } else {
-                    alert(data.error);
+            // Target validation
+            targetInput.addEventListener('input', async () => {
+                const target = targetInput.value.trim();
+                if (!target) {
+                    targetTypeText.textContent = '';
+                    return;
+                }
+
+                try {
+                    const response = await fetch('/api/validate', {
+                        method: 'POST',
+                        headers: { 'Content-Type': 'application/json' },
+                        body: JSON.stringify({ target })
+                    });
+
+                    const data = await response.json();
+                    if (data.valid) {
+                        targetTypeText.textContent = `✓ Detected as: ${data.target_type}`;
+                        targetTypeText.style.color = '#10b981';
+                    } else {
+                        targetTypeText.textContent = '✗ Invalid target format';
+                        targetTypeText.style.color = '#ef4444';
+                    }
+                } catch (error) {
+                    console.error('Validation error:', error);
+                }
+            });
+
+            // Start scan button
+            startButton.addEventListener('click', async () => {
+                const target = targetInput.value.trim();
+                if (!target) {
+                    alert('Please enter a target');
+                    return;
+                }
+
+                const selectedModules = Array.from(
+                    document.querySelectorAll('.module-checkbox input:checked')
+                ).map(cb => cb.value);
+
+                if (selectedModules.length === 0) {
+                    alert('Please select at least one module');
+                    return;
+                }
+
+                try {
+                    startButton.disabled = true;
+                    progressContainer.style.display = 'block';
+                    resultsContainer.style.display = 'none';
+                    noResults.style.display = 'none';
+                    statusMessages.innerHTML = '';
+
+                    const response = await fetch('/api/scan', {
+                        method: 'POST',
+                        headers: { 'Content-Type': 'application/json' },
+                        body: JSON.stringify({
+                            target: target,
+                            selectedModules,
+                            use_intelligence: useIntelligence.checked
+                        })
+                    });
+
+                    const data = await response.json();
+                    if (data.success) {
+                        currentScanId = data.scan_id;
+                    } else {
+                        alert(data.error);
+                        startButton.disabled = false;
+                    }
+                } catch (error) {
+                    alert('Failed to start scan: ' + error.message);
                     startButton.disabled = false;
                 }
-            } catch (error) {
-                alert('Failed to start scan: ' + error.message);
-                startButton.disabled = false;
-            }
-        });
+            });
 
-        // Module descriptions and tags
-        const moduleInfo = {
-            'sherlock': { desc: 'Find usernames across 400+ social networks', tag: '👤 Social', category: 'username' },
-            'holehe': { desc: 'Check email registration on 120+ websites', tag: '📧 Email', category: 'email' },
-            'leak_checker': { desc: 'Search data breaches and password leaks', tag: '🔓 Breaches', category: 'breach' },
-            'theharvester': { desc: 'Gather emails, subdomains, IPs from search engines', tag: '🌐 OSINT', category: 'recon' },
-            'subfinder': { desc: 'Discover subdomains using passive sources', tag: '🔍 DNS', category: 'recon' },
-            'wayback': { desc: 'Access archived website versions and history', tag: '⏰ Archive', category: 'recon' },
-            'nuclei': { desc: 'Scan for vulnerabilities and misconfigurations', tag: '🛡️ Security', category: 'security' },
-            'dnsdumpster': { desc: 'DNS reconnaissance and mapping', tag: '🌐 DNS', category: 'recon' },
-            'exiftool': { desc: 'Extract metadata from images and files', tag: '📷 Metadata', category: 'forensics' },
-            'auto_dorker': { desc: 'Automated Google Dorks for sensitive files', tag: '🔎 Dorks', category: 'recon' },
-            'cloud_hunter': { desc: 'Find exposed cloud storage buckets', tag: '☁️ Cloud', category: 'cloud' },
-            'crypto_hunter': { desc: 'Track cryptocurrency addresses and transactions', tag: '₿ Crypto', category: 'blockchain' },
-            'profile_scraper': { desc: 'Extract detailed social media profile data', tag: '📱 Social', category: 'social' },
-            'sentiment': { desc: 'Analyze sentiment and reputation online', tag: '💭 Analysis', category: 'analysis' },
-            'ocr': { desc: 'Extract text from images using Tesseract', tag: '📸 OCR', category: 'forensics' },
-            'email_permutator': { desc: 'Generate and verify email address variations', tag: '📧 Email', category: 'email' },
-            'job_hunter': { desc: 'Analyze job postings for tech stack intel', tag: '💼 Jobs', category: 'recon' },
-            'canary_checker': { desc: 'Detect honeypots and monitoring systems', tag: '🐦 Security', category: 'security' }
-        };
+            // Module descriptions and tags
+            const moduleInfo = {
+                'sherlock': { desc: 'Find usernames across 400+ social networks', tag: '👤 Social', category: 'username' },
+                'holehe': { desc: 'Check email registration on 120+ websites', tag: '📧 Email', category: 'email' },
+                'leak_checker': { desc: 'Search data breaches and password leaks', tag: '🔓 Breaches', category: 'breach' },
+                'theharvester': { desc: 'Gather emails, subdomains, IPs from search engines', tag: '🌐 OSINT', category: 'recon' },
+                'subfinder': { desc: 'Discover subdomains using passive sources', tag: '🔍 DNS', category: 'recon' },
+                'wayback': { desc: 'Access archived website versions and history', tag: '⏰ Archive', category: 'recon' },
+                'nuclei': { desc: 'Scan for vulnerabilities and misconfigurations', tag: '🛡️ Security', category: 'security' },
+                'dnsdumpster': { desc: 'DNS reconnaissance and mapping', tag: '🌐 DNS', category: 'recon' },
+                'exiftool': { desc: 'Extract metadata from images and files', tag: '📷 Metadata', category: 'forensics' },
+                'auto_dorker': { desc: 'Automated Google Dorks for sensitive files', tag: '🔎 Dorks', category: 'recon' },
+                'cloud_hunter': { desc: 'Find exposed cloud storage buckets', tag: '☁️ Cloud', category: 'cloud' },
+                'crypto_hunter': { desc: 'Track cryptocurrency addresses and transactions', tag: '₿ Crypto', category: 'blockchain' },
+                'profile_scraper': { desc: 'Extract detailed social media profile data', tag: '📱 Social', category: 'social' },
+                'sentiment': { desc: 'Analyze sentiment and reputation online', tag: '💭 Analysis', category: 'analysis' },
+                'ocr': { desc: 'Extract text from images using Tesseract', tag: '📸 OCR', category: 'forensics' },
+                'email_permutator': { desc: 'Generate and verify email address variations', tag: '📧 Email', category: 'email' },
+                'job_hunter': { desc: 'Analyze job postings for tech stack intel', tag: '💼 Jobs', category: 'recon' },
+                'canary_checker': { desc: 'Detect honeypots and monitoring systems', tag: '🐦 Security', category: 'security' }
+            };
 
-        let allModules = [];
+            let allModules = [];
 
-        async function loadModules() {
-            try {
-                const response = await fetch('/api/modules');
-                const data = await response.json();
+            async function loadModules() {
+                try {
+                    const response = await fetch('/api/modules');
+                    const data = await response.json();
 
-                if (data.success) {
-                    allModules = Object.entries(data.modules).filter(([name, info]) => info.available);
-                    renderModules(allModules);
+                    if (data.success) {
+                        allModules = Object.entries(data.modules).filter(([name, info]) => info.available);
+                        renderModules(allModules);
+                    }
+                } catch (error) {
+                    console.error('Failed to load modules:', error);
                 }
-            } catch (error) {
-                console.error('Failed to load modules:', error);
             }
-        }
 
-        function renderModules(modules) {
-            const container = document.getElementById('modules-container');
-            container.innerHTML = '';
-            const defaultModules = ['sherlock', 'holehe', 'leak_checker'];
+            function renderModules(modules) {
+                const container = document.getElementById('modules-container');
+                container.innerHTML = '';
 
-            for (const [name, info] of modules) {
-                const mInfo = moduleInfo[name] || { desc: 'OSINT module', tag: '🔧 Tool', category: 'other' };
-                const div = document.createElement('div');
-                div.className = 'module-checkbox';
-                div.setAttribute('data-module-name', name);
-                div.innerHTML = `
-                    <input type="checkbox" value="${name}" id="module-${name}" 
-                        ${defaultModules.includes(name) ? 'checked' : ''}>
-                    <label for="module-${name}" title="${mInfo.desc}">
-                        <span class="module-tag" style="display: inline-block; background: #667eea; color: white; padding: 2px 8px; border-radius: 4px; font-size: 0.75em; margin-right: 5px;">${mInfo.tag}</span>
-                        <span style="font-weight: 600;">${name}</span>
-                        <br><small style="color: #6b7280; font-size: 0.85em;">${mInfo.desc}</small>
-                        <span class="service-indicator" data-service="${name}" style="float: right; font-size: 0.8em;"></span>
-                    </label>
-                `;
-                container.appendChild(div);
-            }
-        }
+                // Group by category
+                const categories = {};
 
-        // Search functionality
-        document.addEventListener('DOMContentLoaded', () => {
-            const searchInput = document.getElementById('module-search');
-            searchInput.addEventListener('input', (e) => {
-                const searchTerm = e.target.value.toLowerCase();
-                const filtered = allModules.filter(([name, info]) => {
-                    const mInfo = moduleInfo[name] || {};
-                    return name.toLowerCase().includes(searchTerm) || 
-                           (mInfo.desc && mInfo.desc.toLowerCase().includes(searchTerm)) ||
-                           (mInfo.tag && mInfo.tag.toLowerCase().includes(searchTerm)) ||
-                           (mInfo.category && mInfo.category.toLowerCase().includes(searchTerm));
+                modules.forEach(([name, info]) => {
+                    const cat = info.category || 'Other';
+                    if (!categories[cat]) categories[cat] = [];
+                    categories[cat].push([name, info]);
                 });
-                renderModules(filtered);
-            });
 
-            // Select/Deselect All
-            document.getElementById('select-all').addEventListener('click', () => {
-                document.querySelectorAll('.module-checkbox input[type="checkbox"]').forEach(cb => cb.checked = true);
-            });
+                // Create Accordion Sections
+                for (const [cat, mods] of Object.entries(categories)) {
+                    const section = document.createElement('div');
+                    section.className = 'category-section';
+                    section.style.marginBottom = '20px';
 
-            document.getElementById('deselect-all').addEventListener('click', () => {
-                document.querySelectorAll('.module-checkbox input[type="checkbox"]').forEach(cb => cb.checked = false);
-            });
+                    const header = document.createElement('h3');
+                    header.textContent = cat;
+                    header.style.borderBottom = '1px solid #ddd';
+                    header.style.paddingBottom = '5px';
+                    header.style.marginBottom = '10px';
+                    header.style.color = '#555';
+                    section.appendChild(header);
 
-            // Check Services
-            document.getElementById('check-services').addEventListener('click', checkServiceStatus);
-        });
+                    const grid = document.createElement('div');
+                    grid.className = 'modules-grid';
 
-        async function checkServiceStatus() {
-            const statusDiv = document.getElementById('service-status');
-            const statusText = document.getElementById('status-text');
-            statusDiv.style.display = 'block';
-            statusText.innerHTML = '🔄 Checking services...';
-
-            try {
-                const response = await fetch('/api/service-status');
-                const data = await response.json();
-
-                if (data.success) {
-                    const live = data.services.filter(s => s.status === 'live').length;
-                    const total = data.services.length;
-                    statusText.innerHTML = `✅ ${live}/${total} services operational`;
-
-                    // Update individual service indicators
-                    data.services.forEach(service => {
-                        const indicators = document.querySelectorAll(`[data-service="${service.name}"]`);
-                        indicators.forEach(indicator => {
-                            if (service.status === 'live') {
-                                indicator.innerHTML = '🟢';
-                                indicator.title = 'Service Online';
-                            } else {
-                                indicator.innerHTML = '🔴';
-                                indicator.title = 'Service Offline';
-                            }
-                        });
+                    mods.forEach(([name, info]) => {
+                        const div = document.createElement('div');
+                        div.className = 'module-checkbox';
+                        div.innerHTML = `
+                         <input type="checkbox" value="${name}" id="module-${name}" checked>
+                         <label for="module-${name}" title="${info.description}">
+                             <span style="font-size:1.2em; margin-right:5px;">${info.emoji || '🔧'}</span>
+                             <strong>${name}</strong>
+                             <br><small style="color:#666;">${info.description.substring(0, 40)}...</small>
+                         </label>
+                     `;
+                        grid.appendChild(div);
                     });
-                } else {
-                    statusText.innerHTML = '⚠️ Could not check services';
+
+                    section.appendChild(grid);
+                    container.appendChild(section);
                 }
+            }
+
+            // Search functionality
+            document.addEventListener('DOMContentLoaded', () => {
+                const searchInput = document.getElementById('module-search');
+                searchInput.addEventListener('input', (e) => {
+                    const searchTerm = e.target.value.toLowerCase();
+                    const filtered = allModules.filter(([name, info]) => {
+                        const mInfo = moduleInfo[name] || {};
+                        return name.toLowerCase().includes(searchTerm) ||
+                            (mInfnfo.desc.toLowerCase().includes(searchTerm)) ||
+                            (mInfo.tag && mInfo.tag.toLowerCase().includes(searchTerm)) ||
+                            (mInfo.category && mInfo.category.toLowerCase().includes(searchTerm));
+                    });
+                    renderModules(filtered);
+                });
+
+                // Select/Deselect All
+                document.getElementById('select-all').addEventListener('click', () => {
+                    document.querySelectorAll('.module-checkbox input[type="checkbox"]').forEach(cb => cb.checked = true);
+                });
+
+                document.getElementById('deselect-all').addEventListener('click', () => {
+                    document.querySelectorAll('.module-checkbox input[type="checkbox"]').forEach(cb => cb.checked = false);
+                });
+
+                // Check Services
+                document.getElementById('check-services').addEventListener('click', checkServiceStatus);
+                async function checkServiceStatus() {
+                    const statusDiv = document.getElementById('service-status');
+                    const statusText = document.getElementById('status-text');
+                    statusDiv.style.display = 'block';
+                    statusText.innerHTML = '🔄 Checking services...';
+
+                    try {
+                        const response = await fetch('/api/service-status');
+                        const data = await response.json();
+
+                        if (data.success) {
+                            const live = data.services.filter(s => s.status === 'live').length;
+                            const total = data.services.length;
+                            statusText.innerHTML = `✅ ${live}/${total} services operational`;
+
+                            // Update individual service indicators
+                            data.services.forEach(service => {
+                                const indicators = document.querySelectorAll(`[data-service="${service.name}"]`);
+                                indicators.forEach(indicator => {
+                                    if (service.status === e') {
+                                    indicator.innerHTML = '🟢';
+                                    indicator.title = 'Service Online';
+                                } else {
+                                    indicator.innerHTML = '🔴';
+                                    i.title = 'Service Offline';
+                                }
+                        });
+                        });
+                } else {
+                statusText.innerHTML = '⚠️ Could not check services';
+            }
             } catch (error) {
                 statusText.innerHTML = '❌ Check failed';
-                console.error('Service check failed:', error);
+                sole.error('Service check failed:', error);
             }
         }
 
-        function handleScanUpdate(data) {
-            if (data.scan_id !== currentScanId) return;
+            funcdleScanUpdate(data) {
+                if (data.scan_id !== currentScanId) return;
 
-            // Update progress
-            if (data.progress !== undefined) {
-                progressFill.style.width = data.progress + '%';
-                progressFill.textContent = data.progress + '%';
+                // Update progress
+                if (data.progress !== undefined) {
+                    progressFill.style.width = data.progress + '%';
+                    progressFill.textContent = data.progress + '%';
+                }
+
+                // Add status message
+                if (data.message) {
+                    const messageDiv = document.createElement('div');
+                    messageDiv.className = 'status-message status-' + data.status;
+                    messageDiv.textContent = data.message;
+                    statusMessages.insertBefore(messageDiv, statusMessages.firstChild);
+                }
+
+                // Handle completion
+                if (data.status === 'completed') {
+                    startButton.disabled = false;
+                    displayResults(data.results, data.summary, data.reports);
+                } else if (data.status === 'failed') {
+                    startButton.disabled = false;
+                    alert('Scan failed: ' + data.error);
+                }
             }
 
-            // Add status message
-            if (data.message) {
-                const messageDiv = document.createElement('div');
-                messageDiv.className = 'status-message status-' + data.status;
-                messageDiv.textContent = data.message;
-                statusMessages.insertBefore(messageDiv, statusMessages.firstChild);
-            }
+            function displayResults(results, summary, reports) {
+                resultsContainer.style.display = 'block';
+                noResults.stylenone';
 
-            // Handle completion
-            if (data.status === 'completed') {
-                startButton.disabled = false;
-                displayResults(data.results, data.summary, data.reports);
-            } else if (data.status === 'failed') {
-                startButton.disabled = false;
-                alert('Scan failed: ' + data.error);
-            }
-        }
-
-        function displayResults(results, summary, reports) {
-            resultsContainer.style.display = 'block';
-            noResults.style.display = 'none';
-
-            // Display summary stats
-            const statsContainer = document.getElementById('summary-stats');
-            statsContainer.innerHTML = `
-                <div class="stat-card">
-                    <h3>Emails</h3>
-                    <div class="number">${summary.emails}</div>
-                </div>
-                <div class="stat-card">
+                // Display summary stats
+                const statsContainer = document.getElementById('summary-stats');
+                statsContainer.inn erHTML = `
+                <div cl ass="stat-card">
+                    <h3>Emai ls</h3>
+                     <div class="number">${summary.emails}</div>
+                </div> <div class="stat-card">
                     <h3>Usernames</h3>
-                    <div class="number">${summary.usernames}</div>
+                   >${summary.usernames}</div>
                 </div>
                 <div class="stat-card">
                     <h3>Breaches</h3>
@@ -715,70 +827,69 @@
                 </div>
             `;
 
-            // Display detailed results
-            const sectionsContainer = document.getElementById('results-sections');
-            sectionsContainer.innerHTML = '';
+                // Display detailed results
+                const sectionsContainer = document.getElementById('results-sections');
+                sectionsContainer.innerHTML = '';
 
-            // Emails
-            if (results.emails && results.emails.length > 0) {
-                const section = createResultSection('Emails', results.emails);
-                sectionsContainer.appendChild(section);
-            }
-
-            // Usernames
-            if (results.usernames && Object.keys(results.usernames).length > 0) {
-                const section = createUsernameSection('Usernames', results.usernames);
-                sectionsContainer.appendChild(section);
-            }
-
-            // Breaches
-            if (results.breaches && results.breaches.length > 0) {
-                const section = createBreachSection('Data Breaches', results.breaches);
-                sectionsContainer.appendChild(section);
-            }
-
-            // Show download buttons
-            if (reports) {
-                const jsonBtn = document.getElementById('download-json');
-                const htmlBtn = document.getElementById('download-html');
-
-                if (reports.json) {
-                    jsonBtn.style.display = 'inline-block';
-                    jsonBtn.onclick = () => downloadReport(reports.json);
+                // Emails
+                if (results.emails && results.emails.length > 0) {
+                    const section = createResultSection('Emails', results.emails);
+                    sectionsContainer.appendChild(section);
                 }
 
-                if (reports.html) {
-                    htmlBtn.style.display = 'inline-block';
-                    htmlBtn.onclick = () => downloadReport(reports.html);
+                // Usernames
+                if (results.usernames && Object.keys(results.usernames).length > 0) {
+                    const seteUsernameSection('Usernames', results.usernames);
+                    sectionsContainer.appendChild(section);
+                }
+
+                // Breaches
+                if (results.breaches && results.breaches.length > 0) {
+                    const section = createBreachSection('Data Breaches', results.breaches);
+                    sectionsContainer.appendChild(section);
+                }
+   / Show download buttons
+                if (reports) {
+                    const jsonBtn = document.getElementById('download-json');
+                    const htmlBtn = document.getElementById('download-html');
+
+                    if (reports.json) {
+                        jsonBtn.style.display = 'inline-block';
+                        jsonBtn.onclick = () => downloadReport(reports.json);
+                    }
+
+                    if (reports.html) {
+                        htmlBtn.style.display = 'inline-block';
+                        htmlBtn.onclick = () => downloadReport(reports.html);
+                    }
                 }
             }
-        }
 
-        function createResultSection(title, items) {
-            const section = document.createElement('div');
-            section.className = 'results-section';
-            section.innerHTML = `
+            function createResultSection(title, items) {
+                const section = document.createElement('div');
+                section.className = 'results-section';
+                section.innerHTML = `
                 <h3>${title}</h3>
                 <ul class="data-list">
                     ${items.map(item => `<li>${item}</li>`).join('')}
                 </ul>
             `;
-            return section;
-        }
+                return section;
+            }
 
-        function createUsernameSection(title, usernames) {
-            const section = document.createElement('div');
-            section.className = 'results-section';
+            function createUsernameSection(title, usernames) {
+                const section = document.createElement('div');
+                section.className = 'results-section';
 
-            const rows = Object.entries(usernames)
-                .map(([platform, username]) => `
+                const rows = Object.entries(usernames)
+                    .map(([platform, username]) => `
                     <tr>
                         <td>${platform}</td>
                         <td>${username}</td>
                     </tr>
                 `).join('');
 
-            section.innerHTML = `
+                section.innerHTML = `
                 <h3>${title}</h3>
                 <table class="data-table">
                     <thead>
@@ -792,14 +903,14 @@
                     </tbody>
                 </table>
             `;
-            return section;
-        }
+                return section;
+            }
 
-        function createBreachSection(title, breaches) {
-            const section = document.createElement('div');
-            section.className = 'results-section';
+            function createBreachSection(title, breaches) {
+                const section = document.createElement('div');
+                section.className = 'results-section';
 
-            const rows = breaches.map(breach => `
+                const rows = breaches.map(breach => `
                 <tr>
                     <td>${breach.name || 'Unknown'}</td>
                     <td>${breach.date || 'Unknown'}</td>
@@ -807,7 +918,7 @@
                 </tr>
             `).join('');
 
-            section.innerHTML = `
+                section.innerHTML = `
                 <h3>${title}</h3>
                 <table class="data-table">
                     <thead>
@@ -822,116 +933,116 @@
                     </tbody>
                 </table>
             `;
-            return section;
-        }
-
-        function downloadReport(filePath) {
-            const filename = filePath.split('\\').pop().split('/').pop();
-            window.location.href = `/api/reports/${filename}`;
-        }
-    </script>
-    <!-- Jarvis Overlay -->
-    <div id="jarvis-overlay" style="position: fixed; bottom: 30px; right: 30px; z-index: 1000; text-align: center;">
-        <div id="jarvis-status"
-            style="background: rgba(0,0,0,0.8); color: cyan; padding: 5px 10px; border-radius: 5px; margin-bottom: 10px; display: none;">
-            Listening...</div>
-        <button id="jarvis-btn"
-            style="width: 70px; height: 70px; border-radius: 50%; border: none; background: radial-gradient(circle, #00f2ea 0%, #000 100%); box-shadow: 0 0 20px #00f2ea; cursor: pointer; transition: transform 0.2s;">
-            <i class="fas fa-microphone" style="font-size: 24px; color: white;"></i>
-        </button>
-    </div>
-
-    <script>
-        // ... (Existing Socket/UI code) ...
-
-        // JARVIS LOGIC
-        const jarvisBtn = document.getElementById('jarvis-btn');
-        const jarvisStatus = document.getElementById('jarvis-status');
-        let isListening = false;
-
-        // Speech Recognition Setup
-        const SpeechRecognition = window.SpeechRecognition || window.webkitSpeechRecognition;
-        const recognition = new SpeechRecognition();
-        recognition.continuous = false;
-        recognition.lang = 'en-IN'; // Hinglish friendly
-        recognition.interimResults = false;
-
-        // Speech Synthesis Setup
-        const synth = window.speechSynthesis;
-
-        function speak(text) {
-            if (synth.speaking) {
-                console.error('speechSynthesis.speaking');
-                return;
+                return section;
             }
-            const utterThis = new SpeechSynthesisUtterance(text);
-            utterThis.pitch = 1;
-            utterThis.rate = 1;
-            synth.speak(utterThis);
-        }
 
-        jarvisBtn.onclick = () => {
-            if (!isListening) {
-                recognition.start();
-                isListening = true;
-                jarvisStatus.style.display = 'block';
-                jarvisBtn.style.transform = "scale(1.1)";
-                jarvisBtn.style.boxShadow = "0 0 40px #00f2ea";
-            } else {
-                recognition.stop();
+            function downloadReport(filePath) {
+                const filename = filePath.split('\\').pop().split('/').pop();
+                window.location.href = `/api/reports/${filename}`;
+            }
+        </script>
+        <!-- Jarvis Overlay -->
+        <div id="jarvis-overlay" style="position: fixed; bottom: 30px; right: 30px; z-index: 1000; text-align: center;">
+            <div id="jarvis-status"
+                style="background: rgba(0,0,0,0.8); color: cyan; padding: 5px 10px; border-radius: 5px; margin-bottom: 10px; display: none;">
+                Listening...</div>
+            <button id="jarvis-btn"
+                style="width: 70px; height: 70px; border-radius: 50%; border: none; background: radial-gradient(circle, #00f2ea 0%, #000 100%); box-shadow: 0 0 20px #00f2ea; cursor: pointer; transition: transform 0.2s;">
+                <i class="fas fa-microphone" style="font-size: 24px; color: white;"></i>
+            </button>
+        </div>
+
+        <script>
+            // ... (Existing Socket/UI code) ...
+
+            // JARVIS LOGIC
+            const jarvisBtn = document.getElementById('jarvis-btn');
+            const jarvisStatus = document.getElementById('jarvis-status');
+            let isListening = false;
+
+            // Speech Recognition Setup
+            const SpeechRecognition = window.SpeechRecognition || window.webkitSpeechRecognition;
+            const recognition = new SpeechRecognition();
+            recognition.continuous = false;
+            recognition.lang = 'en-IN'; // Hinglish friendly
+            recognition.interimResults = false;
+
+            // Speech Synthesis Setup
+            const synth = window.speechSynthesis;
+
+            function speak(text) {
+                if (synth.speaking) {
+                    console.error('speechSynthesis.speaking');
+                    return;
+                }
+                const utterThis = new SpeechSynthesisUtterance(text);
+                utterThis.pitch = 1;
+                utterThis.rate = 1;
+                synth.speak(utterThis);
+            }
+
+            jarvisBtn.onclick = () => {
+                if (!isListening) {
+                    recognition.start();
+                    isListening = true;
+                    jarvisStatus.style.display = 'block';
+                    jarvisBtn.style.transform = "scale(1.1)";
+                    jarvisBtn.style.boxShadow = "0 0 40px #00f2ea";
+                } else {
+                    recognition.stop();
+                    isListening = false;
+                    jarvisStatus.style.display = 'none';
+                    jarvisBtn.style.transform = "scale(1)";
+                    jarvisBtn.style.boxShadow = "0 0 20px #00f2ea";
+                }
+            };
+
+            recognition.onresult = async (event) => {
+                const transcript = event.results[0][0].transcript;
+                console.log('You said: ' + transcript);
+                jarvisStatus.innerText = "Processing: " + transcript;
+
+                try {
+                    const response = await fetch('/api/jarvis/chat', {
+                        method: 'POST',
+                        headers: { 'Content-Type': 'application/json' },
+                        body: JSON.stringify({ message: transcript })
+                    });
+                    const data = await response.json();
+
+                    if (data.success) {
+                        const result = data.data;
+
+                        if (result.type === 'chat') {
+                            speak(result.response);
+                            jarvisStatus.innerText = "Jarvis: " + result.response.substring(0, 30) + "...";
+                        }
+                        else if (result.type === 'action' && result.action === 'scan') {
+                            speak(result.response);
+                            document.getElementById('target').value = result.target;
+                            document.getElementById('start-scan').click(); // Auto-click
+                        }
+                        else if (result.type === 'action' && result.action === 'code') {
+                            speak(result.response);
+                            alert("Code generated: " + result.filename);
+                        }
+                    }
+                } catch (e) {
+                    console.error(e);
+                    speak("I encountered an error connecting to my brain.");
+                }
+
                 isListening = false;
                 jarvisStatus.style.display = 'none';
                 jarvisBtn.style.transform = "scale(1)";
-                jarvisBtn.style.boxShadow = "0 0 20px #00f2ea";
-            }
-        };
+            };
 
-        recognition.onresult = async (event) => {
-            const transcript = event.results[0][0].transcript;
-            console.log('You said: ' + transcript);
-            jarvisStatus.innerText = "Processing: " + transcript;
-
-            try {
-                const response = await fetch('/api/jarvis/chat', {
-                    method: 'POST',
-                    headers: { 'Content-Type': 'application/json' },
-                    body: JSON.stringify({ message: transcript })
-                });
-                const data = await response.json();
-
-                if (data.success) {
-                    const result = data.data;
-
-                    if (result.type === 'chat') {
-                        speak(result.response);
-                        jarvisStatus.innerText = "Jarvis: " + result.response.substring(0, 30) + "...";
-                    }
-                    else if (result.type === 'action' && result.action === 'scan') {
-                        speak(result.response);
-                        document.getElementById('target').value = result.target;
-                        document.getElementById('start-scan').click(); // Auto-click
-                    }
-                    else if (result.type === 'action' && result.action === 'code') {
-                        speak(result.response);
-                        alert("Code generated: " + result.filename);
-                    }
-                }
-            } catch (e) {
-                console.error(e);
-                speak("I encountered an error connecting to my brain.");
-            }
-
-            isListening = false;
-            jarvisStatus.style.display = 'none';
-            jarvisBtn.style.transform = "scale(1)";
-        };
-
-        recognition.onerror = (event) => {
-            console.error('Speech recognition error detected: ' + event.error);
-            isListening = false;
-            jarvisStatus.style.display = 'none';
-        };
-    </script>
+            recognition.onerror = (event) => {
+                console.error('Speech recognition error detected: ' + event.error);
+                isListening = false;
+                jarvisStatus.style.display = 'none';
+            };
+        </script>
 </body>
 
 </html>
