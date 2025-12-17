@@ -19,6 +19,39 @@
 - ⚡ **Async Operations**: Fast, concurrent module execution
 - 🛡️ **Privacy-Focused**: All data stays local
 
+## ☁️ Deployment on DigitalOcean Droplet via GitHub
+
+1.  **Initialize Git & Push** (Locally):
+    ```bash
+    # Create a new repository on GitHub (e.g., AthenaOSINT)
+    # Then run in this folder:
+    git remote add origin https://github.com/YOUR_USERNAME/AthenaOSINT.git
+    git branch -M main
+    git push -u origin main
+    ```
+
+2.  **Install on Droplet** (Remote Server):
+    *   Connect to your Droplet via SSH.
+    *   Clone your new repository:
+        ```bash
+        git clone https://github.com/YOUR_USERNAME/AthenaOSINT.git
+        cd AthenaOSINT
+        ```
+    *   Run the deployment script:
+        ```bash
+        chmod +x deploy.sh
+        ./deploy.sh
+        ```
+    *   The script will install all dependencies (Python, Pip, System Tools).
+    *   **Start the Service**:
+        ```bash
+        # Start Web UI (Background)
+        nohup python3 run_web.py > web.log 2>&1 &
+        
+        # Start 24/7 Daemon (Background)
+        nohup python3 run_daemon.py > daemon.log 2>&1 &
+        ```
+
 ## 🚀 Quick Start
 
 ### Installation
