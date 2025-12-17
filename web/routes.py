@@ -122,9 +122,15 @@ def get_modules():
 from werkzeug.utils import secure_filename
 from core.background_worker import BackgroundWorker, UPLOAD_DIR
 
-# Start Background Worker
-worker = BackgroundWorker()
-worker.start()
+# Start Background Worker (with error handling)
+worker = None
+try:
+    worker = BackgroundWorker()
+    worker.start()
+    logger.info("Background worker started successfully")
+except Exception as e:
+    logger.error(f"Failed to start background worker: {e}")
+    logger.warning("Upload feature may be limited")
 
 @app.route('/api/system/stats', methods=['GET'])
 def system_stats():
