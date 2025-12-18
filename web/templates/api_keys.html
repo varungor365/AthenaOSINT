@@ -1,0 +1,439 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>API Key Manager - AthenaOSINT</title>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;600;700&display=swap" rel="stylesheet">
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: 'Inter', sans-serif;
+            background: linear-gradient(135deg, #0a0a0a 0%, #1a1a2e 100%);
+            color: #e0e0e0;
+            min-height: 100vh;
+        }
+
+        .container {
+            max-width: 1400px;
+            margin: 0 auto;
+            padding: 20px;
+        }
+
+        .header {
+            margin-bottom: 30px;
+            padding: 20px;
+            background: rgba(255, 255, 255, 0.05);
+            border-radius: 10px;
+        }
+
+        h1 {
+            font-size: 2em;
+            background: linear-gradient(45deg, #00d4ff, #7b2cbf);
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+        }
+
+        .section {
+            background: rgba(255, 255, 255, 0.05);
+            padding: 20px;
+            border-radius: 10px;
+            margin-bottom: 20px;
+        }
+
+        .section-title {
+            font-size: 1.5em;
+            margin-bottom: 20px;
+            display: flex;
+            align-items: center;
+            gap: 10px;
+        }
+
+        .btn {
+            padding: 10px 20px;
+            border: none;
+            border-radius: 8px;
+            font-weight: 600;
+            cursor: pointer;
+            transition: all 0.3s;
+        }
+
+        .btn-primary {
+            background: linear-gradient(45deg, #00d4ff, #7b2cbf);
+            color: white;
+        }
+
+        .btn-danger {
+            background: rgba(255, 69, 0, 0.8);
+            color: white;
+        }
+
+        .btn:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 5px 15px rgba(0, 212, 255, 0.4);
+        }
+
+        table {
+            width: 100%;
+            border-collapse: collapse;
+            margin-top: 20px;
+        }
+
+        th, td {
+            padding: 12px;
+            text-align: left;
+            border-bottom: 1px solid rgba(255, 255, 255, 0.1);
+        }
+
+        th {
+            background: rgba(0, 0, 0, 0.3);
+            font-weight: 600;
+            color: #00d4ff;
+        }
+
+        tr:hover {
+            background: rgba(255, 255, 255, 0.05);
+        }
+
+        .status-active {
+            color: #00ff7f;
+        }
+
+        .status-failed {
+            color: #ff4500;
+        }
+
+        .status-cooling {
+            color: #ffa500;
+        }
+
+        .service-card {
+            background: rgba(0, 0, 0, 0.3);
+            padding: 15px;
+            border-radius: 8px;
+            margin-bottom: 10px;
+            border-left: 3px solid #00d4ff;
+        }
+
+        .service-name {
+            font-weight: 700;
+            color: #00d4ff;
+            font-size: 1.1em;
+            margin-bottom: 8px;
+        }
+
+        .service-info {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+            gap: 10px;
+            font-size: 0.9em;
+            color: #aaa;
+        }
+
+        input[type="text"], select {
+            width: 100%;
+            padding: 12px;
+            border: 1px solid rgba(255, 255, 255, 0.2);
+            border-radius: 8px;
+            background: rgba(0, 0, 0, 0.3);
+            color: white;
+            font-size: 1em;
+            margin-bottom: 10px;
+        }
+
+        input:focus, select:focus {
+            outline: none;
+            border-color: #00d4ff;
+        }
+
+        .form-group {
+            margin-bottom: 20px;
+        }
+
+        label {
+            display: block;
+            margin-bottom: 8px;
+            color: #aaa;
+            font-weight: 600;
+        }
+
+        .stats-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+            gap: 15px;
+            margin-top: 20px;
+        }
+
+        .stat-box {
+            background: rgba(0, 0, 0, 0.3);
+            padding: 15px;
+            border-radius: 8px;
+            text-align: center;
+        }
+
+        .stat-label {
+            font-size: 0.9em;
+            color: #888;
+            margin-bottom: 5px;
+        }
+
+        .stat-value {
+            font-size: 1.8em;
+            font-weight: 700;
+            color: #00d4ff;
+        }
+
+        .key-display {
+            font-family: 'Courier New', monospace;
+            background: rgba(0, 0, 0, 0.5);
+            padding: 8px;
+            border-radius: 4px;
+            font-size: 0.9em;
+            word-break: break-all;
+        }
+
+        .action-buttons {
+            display: flex;
+            gap: 10px;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <div class="header">
+            <h1>🔑 API Key Manager</h1>
+            <p>Manage and rotate API keys for OSINT services</p>
+        </div>
+
+        <!-- Add New Key -->
+        <div class="section">
+            <div class="section-title">➕ Add API Key</div>
+            <div class="form-group">
+                <label>Service</label>
+                <select id="serviceSelect">
+                    <option value="">Select a service...</option>
+                </select>
+            </div>
+            <div class="form-group">
+                <label>API Key</label>
+                <input type="text" id="apiKeyInput" placeholder="Enter API key...">
+            </div>
+            <button onclick="addKey()" class="btn btn-primary">Test & Add Key</button>
+            <button onclick="autoGatherKeys()" class="btn btn-primary">Auto-Gather Keys</button>
+        </div>
+
+        <!-- Available Services -->
+        <div class="section">
+            <div class="section-title">📚 Available Services</div>
+            <div id="servicesContainer"></div>
+        </div>
+
+        <!-- Current Keys -->
+        <div class="section">
+            <div class="section-title">🗝️ Managed Keys</div>
+            <button onclick="loadStats()" class="btn btn-primary">Refresh Stats</button>
+            <button onclick="validateKeys()" class="btn btn-primary">Validate All Keys</button>
+            
+            <div class="stats-grid">
+                <div class="stat-box">
+                    <div class="stat-label">Total Services</div>
+                    <div class="stat-value" id="totalServices">0</div>
+                </div>
+                <div class="stat-box">
+                    <div class="stat-label">Total Keys</div>
+                    <div class="stat-value" id="totalKeys">0</div>
+                </div>
+                <div class="stat-box">
+                    <div class="stat-label">Active Keys</div>
+                    <div class="stat-value" id="activeKeys">0</div>
+                </div>
+                <div class="stat-box">
+                    <div class="stat-label">Failed Keys</div>
+                    <div class="stat-value" id="failedKeys">0</div>
+                </div>
+            </div>
+
+            <table id="keysTable">
+                <thead>
+                    <tr>
+                        <th>Service</th>
+                        <th>Key (Masked)</th>
+                        <th>Status</th>
+                        <th>Calls</th>
+                        <th>Last Used</th>
+                        <th>Actions</th>
+                    </tr>
+                </thead>
+                <tbody id="keysTableBody">
+                    <tr><td colspan="6">Loading...</td></tr>
+                </tbody>
+            </table>
+        </div>
+    </div>
+
+    <script>
+        // Load services on page load
+        loadServices();
+        loadStats();
+
+        async function loadServices() {
+            try {
+                const resp = await fetch('/api/keys/services');
+                const data = await resp.json();
+                
+                if (data.success) {
+                    const select = document.getElementById('serviceSelect');
+                    const container = document.getElementById('servicesContainer');
+                    
+                    // Populate select
+                    data.services.forEach(service => {
+                        const option = document.createElement('option');
+                        option.value = service.service;
+                        option.textContent = service.service;
+                        select.appendChild(option);
+                    });
+                    
+                    // Display service cards
+                    container.innerHTML = data.services.map(service => `
+                        <div class="service-card">
+                            <div class="service-name">${service.service}</div>
+                            <div class="service-info">
+                                <div><strong>Free Tier:</strong> ${service.free_tier ? '✅ Yes' : '❌ No'}</div>
+                                <div><strong>Signup:</strong> <a href="${service.signup_url}" target="_blank">Register</a></div>
+                                ${service.has_demo_key ? `<div><strong>Demo Key:</strong> ${service.demo_key}</div>` : ''}
+                            </div>
+                        </div>
+                    `).join('');
+                }
+            } catch (e) {
+                console.error('Failed to load services:', e);
+            }
+        }
+
+        async function loadStats() {
+            try {
+                const resp = await fetch('/api/keys/stats');
+                const data = await resp.json();
+                
+                if (data.success && data.stats) {
+                    const stats = data.stats;
+                    
+                    // Update summary stats
+                    const totalServices = Object.keys(stats).length;
+                    let totalKeys = 0, activeKeys = 0, failedKeys = 0;
+                    
+                    Object.values(stats).forEach(service => {
+                        totalKeys += service.total_keys || 0;
+                        activeKeys += service.active_keys || 0;
+                        failedKeys += service.failed_keys || 0;
+                    });
+                    
+                    document.getElementById('totalServices').textContent = totalServices;
+                    document.getElementById('totalKeys').textContent = totalKeys;
+                    document.getElementById('activeKeys').textContent = activeKeys;
+                    document.getElementById('failedKeys').textContent = failedKeys;
+                    
+                    // Populate keys table
+                    const tbody = document.getElementById('keysTableBody');
+                    tbody.innerHTML = '';
+                    
+                    Object.entries(stats).forEach(([service, serviceData]) => {
+                        // This is a simplified view - in production, iterate through actual keys
+                        const row = tbody.insertRow();
+                        row.innerHTML = `
+                            <td>${service}</td>
+                            <td colspan="5">
+                                <strong>Keys:</strong> ${serviceData.total_keys} 
+                                (Active: ${serviceData.active_keys}, Failed: ${serviceData.failed_keys})
+                                <br>
+                                <strong>Calls:</strong> ${serviceData.total_calls}
+                                <strong>Failed:</strong> ${serviceData.failed_calls}
+                            </td>
+                        `;
+                    });
+                    
+                    if (Object.keys(stats).length === 0) {
+                        tbody.innerHTML = '<tr><td colspan="6">No API keys configured</td></tr>';
+                    }
+                }
+            } catch (e) {
+                console.error('Failed to load stats:', e);
+            }
+        }
+
+        async function addKey() {
+            const service = document.getElementById('serviceSelect').value;
+            const key = document.getElementById('apiKeyInput').value.trim();
+            
+            if (!service || !key) {
+                alert('Please select a service and enter an API key');
+                return;
+            }
+            
+            try {
+                const resp = await fetch('/api/keys/add', {
+                    method: 'POST',
+                    headers: {'Content-Type': 'application/json'},
+                    body: JSON.stringify({service, key})
+                });
+                
+                const data = await resp.json();
+                
+                if (data.success) {
+                    alert(data.message);
+                    document.getElementById('apiKeyInput').value = '';
+                    loadStats();
+                } else {
+                    alert('Error: ' + data.error);
+                }
+            } catch (e) {
+                alert('Failed to add key: ' + e.message);
+            }
+        }
+
+        async function validateKeys() {
+            if (!confirm('This will test all API keys. Continue?')) {
+                return;
+            }
+            
+            try {
+                const resp = await fetch('/api/keys/validate', {
+                    method: 'POST'
+                });
+                
+                const data = await resp.json();
+                alert(data.message || 'Validation complete');
+                loadStats();
+            } catch (e) {
+                alert('Validation failed: ' + e.message);
+            }
+        }
+
+        async function autoGatherKeys() {
+            if (!confirm('This will attempt to auto-discover API keys from public sources. Continue?')) {
+                return;
+            }
+            
+            try {
+                const resp = await fetch('/api/keys/gather', {
+                    method: 'POST'
+                });
+                
+                const data = await resp.json();
+                alert(data.message || 'Gathering complete');
+                loadStats();
+            } catch (e) {
+                alert('Gathering failed: ' + e.message);
+            }
+        }
+
+        // Auto-refresh stats every 30 seconds
+        setInterval(loadStats, 30000);
+    </script>
+</body>
+</html>

@@ -101,6 +101,11 @@ def settings_view():
 def breach_monitor_view():
     return render_template('breach_monitor.html')
 
+@app.route('/api-keys')
+@login_required
+def api_keys_view():
+    return render_template('api_keys.html')
+
 
 @app.route('/api/modules', methods=['GET'])
 def get_modules():
@@ -925,6 +930,172 @@ def manual_breach_index():
     
     except Exception as e:
         logger.error(f"Manual indexing error: {e}")
+        return jsonify({'success': False, 'error': str(e)}), 500
+
+
+# ============================================================================
+# API KEY MANAGEMENT ENDPOINTS
+# ============================================================================
+
+@app.route('/api/keys/services', methods=['GET'])
+def get_api_services():
+    """Get list of supported API services with signup info."""
+    try:
+        from core.api_gatherer import APIGatherer
+        gatherer = APIGatherer()
+        
+        instructions = gatherer.get_signup_instructions()
+        
+        return jsonify({
+            'success': True,
+            'services': instructions
+        })
+    
+    except Exception as e:
+        logger.error(f"Error getting services: {e}")
+        return jsonify({'success': False, 'error': str(e)}), 500
+
+
+@app.route('/api/keys/add', methods=['POST'])
+@login_required
+def add_api_key():
+    """Add an API key to the rotation pool."""
+    try:
+        data = request.get_json()
+        service = data.get('service', '').strip().lower()
+        key = data.get('key', '').strip()
+        
+        if not service or not key:
+            return jsonify({'success': False, 'error': 'Service and key required'}), 400
+        
+        from core.api_rotator import get_rotator
+        rotator = get_rotator()
+        
+        # Test the key first
+        from core.api_gatherer import APIGatherer
+        gatherer = APIGatherer()
+        
+        import asyncio
+        is_valid = asyncio.run(gatherer.test_api_key(service, key))
+        
+        if not is_valid:
+            return jsonify({
+                'success': False,
+                'error': 'API key validation failed'
+            }), 400
+        
+        # Add to rotator
+        result = rotator.add_key(service, key, metadata={
+            'source': 'manual',
+            'added_by': 'admin'
+        })
+        
+        if result:
+            return jsonify({
+                'success': True,
+                'message': f'API key added for {service}'
+            })
+        else:
+            return jsonify({
+                'success': False,
+                'error': 'Key already exists'
+            }), 400
+    
+    except Exception as e:
+        logger.error(f"Error adding API key: {e}")
+        return jsonify({'success': False, 'error': str(e)}), 500
+
+
+@app.route('/api/keys/remove', methods=['POST'])
+@login_required
+def remove_api_key():
+    """Remove an API key from rotation."""
+    try:
+        data = request.get_json()
+        service = data.get('service', '').strip().lower()
+        key = data.get('key', '').strip()
+        
+        if not service or not key:
+            return jsonify({'success': False, 'error': 'Service and key required'}), 400
+        
+        from core.api_rotator import get_rotator
+        rotator = get_rotator()
+        
+        rotator.remove_key(service, key)
+        
+        return jsonify({
+            'success': True,
+            'message': f'API key removed for {service}'
+        })
+    
+    except Exception as e:
+        logger.error(f"Error removing API key: {e}")
+        return jsonify({'success': False, 'error': str(e)}), 500
+
+
+@app.route('/api/keys/stats', methods=['GET'])
+def get_api_key_stats():
+    """Get statistics for all API keys."""
+    try:
+        from core.api_rotator import get_rotator
+        rotator = get_rotator()
+        
+        stats = rotator.get_all_stats()
+        
+        return jsonify({
+            'success': True,
+            'stats': stats
+        })
+    
+    except Exception as e:
+        logger.error(f"Error getting API stats: {e}")
+        return jsonify({'success': False, 'error': str(e)}), 500
+
+
+@app.route('/api/keys/validate', methods=['POST'])
+@login_required
+def validate_api_keys():
+    """Validate all existing API keys."""
+    try:
+        from core.api_gatherer import APIGatherer
+        
+        gatherer = APIGatherer()
+        
+        # Run validation asynchronously
+        import asyncio
+        asyncio.run(gatherer.validate_existing_keys())
+        
+        return jsonify({
+            'success': True,
+            'message': 'API key validation complete'
+        })
+    
+    except Exception as e:
+        logger.error(f"Error validating keys: {e}")
+        return jsonify({'success': False, 'error': str(e)}), 500
+
+
+@app.route('/api/keys/gather', methods=['POST'])
+@login_required
+def gather_api_keys():
+    """Automatically gather API keys from public sources."""
+    try:
+        from core.api_gatherer import APIGatherer
+        
+        gatherer = APIGatherer()
+        
+        # Run gathering
+        import asyncio
+        keys = asyncio.run(gatherer.gather_all_keys())
+        
+        return jsonify({
+            'success': True,
+            'message': f'Discovered {sum(len(v) for v in keys.values())} API keys',
+            'keys': {k: len(v) for k, v in keys.items()}
+        })
+    
+    except Exception as e:
+        logger.error(f"Error gathering keys: {e}")
         return jsonify({'success': False, 'error': str(e)}), 500
 
 
