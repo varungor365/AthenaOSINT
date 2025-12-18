@@ -210,6 +210,9 @@ class BreachDaemon(threading.Thread):
     
     def _run_async_cycle(self):
         """Run async monitoring cycle in separate thread."""
+        import eventlet
+        eventlet.monkey_patch()
+        
         import asyncio
         loop = asyncio.new_event_loop()
         asyncio.set_event_loop(loop)
@@ -217,8 +220,13 @@ class BreachDaemon(threading.Thread):
             loop.run_until_complete(self.monitoring_cycle())
             if self.monitor and self.monitor.browser:
                 loop.run_until_complete(self.monitor._close_browser())
+        except Exception as e:
+            logger.error(f"Async cycle error: {e}")
         finally:
-            loop.close()
+            try:
+                loop.close()
+            except:
+                pass
     
     def pause(self):
         """Pause daemon operations."""
