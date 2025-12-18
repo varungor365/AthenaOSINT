@@ -24,6 +24,10 @@ scrapegraphai
 playwright
 ragas
 datasets>=4.12.2
+pysocks
+onionsearch
+firecrawl-py
+scrapling
 lxml>=4.9.3
 
 # OSINT libraries
@@ -44,6 +48,8 @@ python-telegram-bot>=20.7
 scikit-learn>=1.3.2
 pandas>=2.1.4
 numpy>=1.26.2
+python-magic>=0.4.27
+mmh3>=3.0.0
 
 # Data handling
 openpyxl>=3.1.2

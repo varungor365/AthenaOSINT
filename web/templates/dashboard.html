@@ -861,31 +861,42 @@
         dropZone.ondrop = (e) => {
             e.preventDefault();
             dropZone.classList.remove('dragover');
-            handlefiles(e.dataTransfer.files);
+            handleFiles(e.dataTransfer.files);
         };
-        fileInput.onchange = () => handlefiles(fileInput.files);
+        fileInput.onchange = () => handleFiles(fileInput.files);
 
-        async function handlefiles(files) {
+        async function handleFiles(files) {
+            if (!files.length) return;
+
+            logFeed(`Uploading ${files.length} files...`, "info");
+
             const formData = new FormData();
-            let count = 0;
             for (let i = 0; i < files.length; i++) {
                 formData.append('files', files[i]);
-                count++;
             }
 
-            if (count === 0) return;
-
-            logFeed(`Uploading ${count} files...`, "info");
             try {
-                const res = await fetch('/api/upload', { method: 'POST', body: formData });
+                // Remove default Content-Type header to let browser set boundary for FormData
+                const res = await fetch('/api/upload', {
+                    method: 'POST',
+                    body: formData
+                });
+
+                if (!res.ok) {
+                    throw new Error(`Server returned ${res.status}`);
+                }
+
                 const d = await res.json();
                 if (d.success) {
                     logFeed(d.message, "success");
-                    updateFileList(); // Refresh list immediately
+                    updateFileList(); // Refresh file list
                 } else {
-                    logFeed("Upload failed: " + d.error, "error");
+                    logFeed("Upload Failed: " + d.error, "error");
                 }
-            } catch (e) { logFeed("Upload error: " + e, "error"); }
+            } catch (e) {
+                console.error(e);
+                logFeed("Upload error: " + e.message, "error");
+            }
         }
 
         /* --- FILE LIST POLLING --- */

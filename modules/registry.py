@@ -174,10 +174,143 @@ MODULE_REGISTRY = {
     },
     'torbot': {
         'category': 'Dark Web',
-        'desc': 'Crawl .onion links to map structure',
+        'description': 'Crawl .onion links to map structure',
         'type': 'onion',
         'risk': 'medium',
         'emoji': '🤖'
+    },
+    'firecrawl': {
+        'category': 'scraper',
+        'description': 'Turn websites into LLM-ready markdown',
+        'type': 'url',
+        'risk': 'medium',
+        'emoji': '🔥'
+    },
+    'scrapling': {
+        'category': 'scraper',
+        'description': 'Undetectable High-Performance Scraper',
+        'type': 'url',
+        'risk': 'medium',
+        'emoji': '🎭'
+    },
+    'onion_search': {
+        'category': 'Dark Web',
+        'description': 'Dark Web Search Engine Aggregator',
+        'type': 'keyword',
+        'risk': 'medium',
+        'emoji': '🧅'
+    },
+    'maryam': {
+        'category': 'Framework',
+        'description': 'OWASP Maryam Wrapper',
+        'type': 'domain',
+        'risk': 'medium',
+        'emoji': '🦄'
+    },
+    'websift': {
+        'category': 'scraper',
+        'description': 'Extract Contacts from Websites',
+        'type': 'url',
+        'risk': 'safe',
+        'emoji': '🕸️'
+    },
+    'redeye': {
+        'category': 'Dark Web',
+        'description': 'Dark Web Market & Forum Monitor',
+        'type': 'keyword',
+        'risk': 'high',
+        'emoji': '👹'
+    },
+    'sn0int': {
+        'category': 'Framework',
+        'description': 'sn0int OSINT Framework Wrapper',
+        'type': 'domain',
+        'risk': 'medium',
+        'emoji': '🧶'
+    },
+    'instagram': {
+        'category': 'Social Media',
+        'description': 'Instagram Profile & Media Scraper',
+        'type': 'username',
+        'risk': 'medium',
+        'emoji': '📸'
+    },
+    'facebook': {
+        'category': 'Social Media',
+        'description': 'Scrape Facebook Friend Lists',
+        'type': 'username',
+        'risk': 'high',
+        'emoji': '📘'
+    },
+    'witnessme': {
+        'category': 'Utils',
+        'description': 'Automated Website Screenshotter',
+        'type': 'url',
+        'risk': 'safe',
+        'emoji': '📸'
+    },
+    'port_scanner': {
+        'category': 'Network',
+        'description': 'Basic Port Scanner',
+        'type': 'ip',
+        'risk': 'medium',
+        'emoji': '🔌'
+    },
+    'graph_exporter': {
+        'category': 'Utils',
+        'description': 'Export to GraphML (Maltego)',
+        'type': 'none',
+        'risk': 'safe',
+        'emoji': '📊'
+    },
+    'rss_monitor': {
+        'category': 'Automation',
+        'description': 'RSS Feed Monitor (Medium/Blogs)',
+        'type': 'username',
+        'risk': 'safe',
+        'emoji': '📰'
+    },
+    'proxy_scraper': {
+        'category': 'Network',
+        'description': 'Public Proxy Scraper',
+        'type': 'none',
+        'risk': 'safe',
+        'emoji': '🛡️'
+    },
+    'spoof_check': {
+        'category': 'Network',
+        'description': 'Email Spoofing Check (SPF/DMARC)',
+        'type': 'domain',
+        'risk': 'safe',
+        'emoji': '📧'
+    },
+    'trufflehog': {
+        'category': 'Scanner',
+        'description': 'Secret & Key Scanner',
+        'type': 'url',
+        'risk': 'safe',
+        'emoji': '🐷'
+    },
+    'doc_hunter': {
+        'category': 'Recon',
+        'description': 'Document & Metadata Hunter',
+        'type': 'domain',
+        'risk': 'medium',
+        'emoji': '📄'
+    },
+    'linkedin': {
+        'category': 'Social Media',
+        'description': 'LinkedIn Dork Generator',
+        'type': 'keyword',
+        'risk': 'safe',
+        'emoji': '👔'
+    },
+    'ghost_track': {
+        'category': 'Real World',
+        'description': 'IP & Phone Geolocation Tracker',
+        'type': 'ip',
+        'risk': 'safe',
+        'emoji': '👻'
     },
     'pwndb': {
         'category': 'Dark Web',

@@ -96,6 +96,11 @@ def history_view():
 def settings_view():
     return render_template('settings.html')
 
+@app.route('/breach-monitor')
+@login_required
+def breach_monitor_view():
+    return render_template('breach_monitor.html')
+
 
 @app.route('/api/modules', methods=['GET'])
 def get_modules():
@@ -170,7 +175,7 @@ def restart_system():
 
 @app.route('/api/upload', methods=['POST', 'OPTIONS'])
 def upload_data():
-    """Upload breach data for the Self-Learning system."""
+    """Upload breach database files for indexing."""
     # Handle CORS preflight
     if request.method == 'OPTIONS':
         response = jsonify({'success': True})
@@ -195,7 +200,7 @@ def upload_data():
         UPLOAD_DIR.mkdir(parents=True, exist_ok=True)
         logger.info(f"Upload directory: {UPLOAD_DIR}")
         
-        uploaded_count = 0
+        uploaded_files = []
         for file in files:
             if file.filename == '':
                 logger.warning("Empty filename")
@@ -205,12 +210,28 @@ def upload_data():
                 filename = secure_filename(file.filename)
                 save_path = UPLOAD_DIR / filename
                 file.save(str(save_path))
-                uploaded_count += 1
-                logger.info(f"File uploaded successfully: {filename} -> {save_path}")
+                uploaded_files.append({
+                    'filename': filename,
+                    'path': str(save_path),
+                    'size': save_path.stat().st_size
+                })
+                logger.info(f"File uploaded: {filename} ({save_path.stat().st_size} bytes)")
+        
+        # If breach daemon is running, it will auto-index these files
+        # Otherwise, provide manual indexing option
+        message = f'Uploaded {len(uploaded_files)} file(s). '
+        
+        from core.breach_daemon import get_daemon
+        daemon = get_daemon()
+        if daemon and daemon.is_alive():
+            message += 'Breach daemon will automatically index them.'
+        else:
+            message += 'Start breach monitoring to auto-index, or use manual indexing.'
         
         response = jsonify({
             'success': True, 
-            'message': f'Uploaded {uploaded_count} file(s). The Background System is analyzing them.'
+            'message': message,
+            'files': uploaded_files
         })
         response.headers.add('Access-Control-Allow-Origin', '*')
         return response
@@ -669,6 +690,242 @@ def handle_disconnect():
 def handle_ping():
     """Handle ping event."""
     emit('pong', {'timestamp': time.time()})
+
+
+# ============================================================================
+# BREACH MONITORING API ENDPOINTS
+# ============================================================================
+
+@app.route('/api/breach/daemon/start', methods=['POST'])
+@login_required
+def start_breach_daemon():
+    """Start the autonomous breach monitoring daemon."""
+    try:
+        from core.breach_daemon import start_daemon, get_daemon
+        
+        # Check if already running
+        daemon = get_daemon()
+        if daemon and daemon.is_alive():
+            return jsonify({
+                'success': True,
+                'message': 'Breach daemon already running',
+                'stats': daemon.get_stats()
+            })
+        
+        # Start daemon with config
+        max_cpu = float(request.json.get('max_cpu_percent', 30.0))
+        max_memory = int(request.json.get('max_memory_mb', 512))
+        interval = int(request.json.get('check_interval', 1800))
+        
+        daemon = start_daemon(
+            max_cpu_percent=max_cpu,
+            max_memory_mb=max_memory,
+            check_interval=interval
+        )
+        
+        return jsonify({
+            'success': True,
+            'message': 'Breach daemon started',
+            'stats': daemon.get_stats()
+        })
+    
+    except Exception as e:
+        logger.error(f"Failed to start breach daemon: {e}")
+        return jsonify({'success': False, 'error': str(e)}), 500
+
+
+@app.route('/api/breach/daemon/stop', methods=['POST'])
+@login_required
+def stop_breach_daemon():
+    """Stop the breach monitoring daemon."""
+    try:
+        from core.breach_daemon import stop_daemon
+        stop_daemon()
+        
+        return jsonify({
+            'success': True,
+            'message': 'Breach daemon stopped'
+        })
+    
+    except Exception as e:
+        logger.error(f"Failed to stop breach daemon: {e}")
+        return jsonify({'success': False, 'error': str(e)}), 500
+
+
+@app.route('/api/breach/daemon/status', methods=['GET'])
+def get_breach_daemon_status():
+    """Get breach daemon status and statistics."""
+    try:
+        from core.breach_daemon import get_daemon
+        
+        daemon = get_daemon()
+        if not daemon or not daemon.is_alive():
+            return jsonify({
+                'success': True,
+                'running': False,
+                'message': 'Breach daemon not running'
+            })
+        
+        stats = daemon.get_stats()
+        
+        return jsonify({
+            'success': True,
+            'running': True,
+            'stats': stats
+        })
+    
+    except Exception as e:
+        logger.error(f"Failed to get daemon status: {e}")
+        return jsonify({'success': False, 'error': str(e)}), 500
+
+
+@app.route('/api/breach/daemon/pause', methods=['POST'])
+@login_required
+def pause_breach_daemon():
+    """Pause the breach daemon."""
+    try:
+        from core.breach_daemon import get_daemon
+        daemon = get_daemon()
+        
+        if daemon:
+            daemon.pause()
+            return jsonify({'success': True, 'message': 'Daemon paused'})
+        else:
+            return jsonify({'success': False, 'error': 'Daemon not running'}), 400
+    
+    except Exception as e:
+        return jsonify({'success': False, 'error': str(e)}), 500
+
+
+@app.route('/api/breach/daemon/resume', methods=['POST'])
+@login_required
+def resume_breach_daemon():
+    """Resume the breach daemon."""
+    try:
+        from core.breach_daemon import get_daemon
+        daemon = get_daemon()
+        
+        if daemon:
+            daemon.resume()
+            return jsonify({'success': True, 'message': 'Daemon resumed'})
+        else:
+            return jsonify({'success': False, 'error': 'Daemon not running'}), 400
+    
+    except Exception as e:
+        return jsonify({'success': False, 'error': str(e)}), 500
+
+
+@app.route('/api/breach/search/email', methods=['POST'])
+def search_breach_email():
+    """Search for an email in breach database."""
+    try:
+        data = request.get_json()
+        email = data.get('email', '').strip()
+        
+        if not email or '@' not in email:
+            return jsonify({'success': False, 'error': 'Valid email required'}), 400
+        
+        from intelligence.breach_indexer import BreachIndexer
+        indexer = BreachIndexer()
+        
+        results = indexer.search_email(email)
+        
+        return jsonify({
+            'success': True,
+            'email': email,
+            'found': len(results) > 0,
+            'breach_count': len(results),
+            'results': results
+        })
+    
+    except Exception as e:
+        logger.error(f"Breach search error: {e}")
+        return jsonify({'success': False, 'error': str(e)}), 500
+
+
+@app.route('/api/breach/search/domain', methods=['POST'])
+def search_breach_domain():
+    """Search for all emails from a domain in breach database."""
+    try:
+        data = request.get_json()
+        domain = data.get('domain', '').strip()
+        
+        if not domain:
+            return jsonify({'success': False, 'error': 'Domain required'}), 400
+        
+        from intelligence.breach_indexer import BreachIndexer
+        indexer = BreachIndexer()
+        
+        results = indexer.search_domain(domain)
+        
+        return jsonify({
+            'success': True,
+            'domain': domain,
+            'email_count': len(results),
+            'results': results[:100]  # Limit to 100 for display
+        })
+    
+    except Exception as e:
+        logger.error(f"Domain search error: {e}")
+        return jsonify({'success': False, 'error': str(e)}), 500
+
+
+@app.route('/api/breach/stats', methods=['GET'])
+def get_breach_stats():
+    """Get breach database statistics."""
+    try:
+        from intelligence.breach_indexer import BreachIndexer
+        indexer = BreachIndexer()
+        
+        stats = indexer.get_breach_stats()
+        
+        return jsonify({
+            'success': True,
+            'stats': stats
+        })
+    
+    except Exception as e:
+        logger.error(f"Stats error: {e}")
+        return jsonify({'success': False, 'error': str(e)}), 500
+
+
+@app.route('/api/breach/index/manual', methods=['POST'])
+@login_required
+def manual_breach_index():
+    """Manually trigger indexing of uploaded files."""
+    try:
+        from intelligence.breach_indexer import BreachIndexer
+        from core.background_worker import UPLOAD_DIR
+        
+        indexer = BreachIndexer()
+        
+        # Get files to index
+        files = list(UPLOAD_DIR.glob('*.txt'))
+        files.extend(list(UPLOAD_DIR.glob('*.csv')))
+        
+        if not files:
+            return jsonify({
+                'success': False,
+                'error': 'No files to index in upload directory'
+            }), 400
+        
+        results = []
+        for file_path in files:
+            result = indexer.index_file(file_path)
+            results.append({
+                'file': file_path.name,
+                'result': result
+            })
+        
+        return jsonify({
+            'success': True,
+            'message': f'Indexed {len(results)} files',
+            'results': results
+        })
+    
+    except Exception as e:
+        logger.error(f"Manual indexing error: {e}")
+        return jsonify({'success': False, 'error': str(e)}), 500
 
 
 @app.route('/api/jarvis/chat', methods=['POST'])

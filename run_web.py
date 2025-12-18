@@ -1,9 +1,12 @@
 #!/usr/bin/env python3
 """
 Web interface launcher for AthenaOSINT.
-
-This script starts the Flask web server with SocketIO support.
+Includes Eventlet monkey patching for stable SocketIO performance.
 """
+
+# Monkey Patch for Eventlet (Must be FIRST)
+import eventlet
+eventlet.monkey_patch()
 
 import sys
 from pathlib import Path
@@ -15,13 +18,12 @@ from web.routes import app, socketio
 from config import get_config
 from loguru import logger
 
-
 def main():
     """Start the web interface."""
     config = get_config()
     
     host = config.get('FLASK_HOST', '0.0.0.0')
-    port = config.get('FLASK_PORT', 5000)
+    port = int(config.get('FLASK_PORT', 5000))
     debug = config.get('FLASK_ENV') == 'development'
     
     print(f"""
@@ -43,7 +45,7 @@ Press CTRL+C to stop the server
             host=host,
             port=port,
             debug=debug,
-            allow_unsafe_werkzeug=True  # For development
+            allow_unsafe_werkzeug=True
         )
     except KeyboardInterrupt:
         print("\n\nShutting down web server...")
@@ -51,7 +53,6 @@ Press CTRL+C to stop the server
     except Exception as e:
         logger.error(f"Web server error: {e}")
         sys.exit(1)
-
 
 if __name__ == '__main__':
     main()

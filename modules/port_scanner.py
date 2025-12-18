@@ -1,77 +1,61 @@
 """
 Port Scanner Module.
-Active reconnaissance to identify exposed services on an IP/Domain.
+Active infrastructure mapping (Top 20 Ports).
 """
-
 import socket
-import threading
-from concurrent.futures import ThreadPoolExecutor
-from colorama import Fore, Style
+import concurrent.futures
+from loguru import logger
 from core.engine import Profile
 
+# Metadata
 META = {
-    'description': 'Scans top 20 common ports to identify services',
-    'target_type': 'ip, domain',
-    'requirements': 'None'
+    'name': 'port_scanner',
+    'description': 'Basic Port Scanner (Active)',
+    'category': 'Network',
+    'risk': 'medium', # Active scanning
+    'emoji': '🔌'
 }
 
-# Top 20 Common Ports
-COMMON_PORTS = [
-    21, 22, 23, 25, 53, 80, 110, 135, 139, 143, 
-    443, 445, 993, 995, 1433, 3306, 3389, 5900, 8000, 8080
+TOP_PORTS = [
+    21, 22, 23, 25, 53, 80, 110, 111, 135, 139, 143, 443, 445, 993, 995, 1723, 3306, 3389, 5900, 8080
 ]
 
-PORT_NAMES = {
-    21: 'FTP', 22: 'SSH', 23: 'Telnet', 25: 'SMTP', 53: 'DNS',
-    80: 'HTTP', 443: 'HTTPS', 445: 'SMB', 3306: 'MySQL', 3389: 'RDP',
-    8080: 'HTTP-Alt'
-}
-
-def check_port(target_ip: str, port: int) -> int:
-    """Check a single port. Returns port if open, 0 if closed."""
+def check_port(target, port):
     try:
-        sock = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
-        sock.settimeout(1.0) # 1 sec timeout
-        result = sock.connect_ex((target_ip, port))
-        sock.close()
-        return port if result == 0 else 0
+        with socket.socket(socket.AF_INET, socket.SOCK_STREAM) as s:
+            s.settimeout(1.0)
+            result = s.connect_ex((target, port))
+            if result == 0:
+                return port
     except:
-        return 0
+        pass
+    return None
 
-def scan(target: str, profile: Profile) -> None:
-    """Run Port Scanner."""
-    print(f"{Fore.CYAN}[+] Running Active Port Scanner...{Style.RESET_ALL}")
-    
-    # Resolve IP if target is domain
-    target_ip = target
-    try:
-        # Simple heuristic to identify domain vs IP
-        if any(c.isalpha() for c in target):
-            target_ip = socket.gethostbyname(target)
-            print(f"  {Fore.BLUE}ℹ Resolved {target} -> {target_ip}{Style.RESET_ALL}")
-    except Exception as e:
-        print(f"  {Fore.RED}└─ Could not resolve target: {e}{Style.RESET_ALL}")
-        return
+def scan(target: str, profile: Profile):
+    """
+    Scans top ports on the target.
+    """
+    # IP or Domain?
+    if 'http' in target:
+        import urllib.parse
+        target = urllib.parse.urlparse(target).netloc
+
+    logger.info(f"[PortScanner] Scanning top {len(TOP_PORTS)} ports on {target}...")
 
     open_ports = []
     
-    # Threaded Scan
-    with ThreadPoolExecutor(max_workers=10) as executor:
-        futures = {executor.submit(check_port, target_ip, port): port for port in COMMON_PORTS}
-        for future in futures:
-            res = future.result()
-            if res:
-                open_ports.append(res)
-                
-    if open_ports:
-        print(f"  {Fore.GREEN}└─ Open Ports Found:{Style.RESET_ALL}")
-        results = []
-        for p in sorted(open_ports):
-            service = PORT_NAMES.get(p, 'Unknown')
-            print(f"     - {p}/tcp ({service})")
-            results.append({'port': p, 'service': service})
-            
-        # Store in profile
-        profile.raw_data.setdefault('open_ports', []).extend(results)
-    else:
-        print(f"  {Fore.YELLOW}└─ No common ports found open (filtered/closed).{Style.RESET_ALL}")
+    try:
+        with concurrent.futures.ThreadPoolExecutor(max_workers=10) as executor:
+            future_to_port = {executor.submit(check_port, target, p): p for p in TOP_PORTS}
+            for future in concurrent.futures.as_completed(future_to_port):
+                port = future.result()
+                if port:
+                    open_ports.append(port)
+                    logger.info(f"  └─ Port {port} OPEN")
+                    
+        profile.add_metadata({'open_ports': open_ports})
+        logger.success(f"[PortScanner] Found {len(open_ports)} open ports.")
+        
+    except Exception as e:
+        logger.error(f"[PortScanner] Scan failed: {e}")
+        profile.add_error('port_scanner', str(e))

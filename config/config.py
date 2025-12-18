@@ -70,6 +70,15 @@ class Config:
             # AutoGen
             'OPENAI_API_KEY': os.getenv('OPENAI_API_KEY', ''),
             
+            # Firecrawl
+            'FIRECRAWL_API_KEY': os.getenv('FIRECRAWL_API_KEY', ''),
+
+            # Social Credentials
+            'FACEBOOK_EMAIL': os.getenv('FACEBOOK_EMAIL', ''),
+            'FACEBOOK_PASSWORD': os.getenv('FACEBOOK_PASSWORD', ''),
+            'INSTAGRAM_USER': os.getenv('INSTAGRAM_USER', ''),
+            'INSTAGRAM_PASSWORD': os.getenv('INSTAGRAM_PASSWORD', ''),
+
             # Paths
             'DATA_DIR': Path(__file__).parent.parent / 'data',
             'REPORTS_DIR': Path(__file__).parent.parent / 'reports',
