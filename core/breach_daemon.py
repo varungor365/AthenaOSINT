@@ -184,17 +184,16 @@ class BreachDaemon(threading.Thread):
             self.stats['status'] = 'failed'
             return
         
-        # Create event loop for async operations
-        loop = asyncio.new_event_loop()
-        asyncio.set_event_loop(loop)
-        
         self.stats['status'] = 'idle'
         
         try:
             while self.running:
                 try:
-                    # Run monitoring cycle
-                    loop.run_until_complete(self.monitoring_cycle())
+                    # Run monitoring cycle in thread-safe way
+                    import concurrent.futures
+                    with concurrent.futures.ThreadPoolExecutor() as executor:
+                        future = executor.submit(self._run_async_cycle)
+                        future.result()
                     
                     # Sleep until next cycle
                     logger.info(f"Sleeping for {self.check_interval}s...")
@@ -206,11 +205,20 @@ class BreachDaemon(threading.Thread):
         
         finally:
             # Cleanup
-            if self.monitor:
-                loop.run_until_complete(self.monitor._close_browser())
-            loop.close()
             logger.info("BreachDaemon stopped")
             self.stats['status'] = 'stopped'
+    
+    def _run_async_cycle(self):
+        """Run async monitoring cycle in separate thread."""
+        import asyncio
+        loop = asyncio.new_event_loop()
+        asyncio.set_event_loop(loop)
+        try:
+            loop.run_until_complete(self.monitoring_cycle())
+            if self.monitor and self.monitor.browser:
+                loop.run_until_complete(self.monitor._close_browser())
+        finally:
+            loop.close()
     
     def pause(self):
         """Pause daemon operations."""
