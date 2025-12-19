@@ -54,27 +54,59 @@ async def index():
       <meta name='viewport' content='width=device-width, initial-scale=1'/>
       <title>Agent Orchestrator</title>
       <style>
-        body {{ font-family: Arial, sans-serif; max-width: 800px; margin: 40px auto; }}
-        textarea, input {{ width: 100%; padding: 10px; margin: 8px 0; }}
-        button {{ padding: 10px 16px; }}
+        body {{ font-family: Arial, sans-serif; max-width: 800px; margin: 40px auto; padding: 20px; }}
+        textarea, input {{ width: 100%; padding: 10px; margin: 8px 0; box-sizing: border-box; }}
+        button {{ padding: 10px 16px; cursor: pointer; }}
+        button:disabled {{ opacity: 0.5; cursor: not-allowed; }}
         pre {{ background:#111; color:#0f0; padding: 10px; min-height: 120px; white-space: pre-wrap; }}
+        .loading {{ color: #ff0; }}
       </style>
     </head>
     <body>
       <h2>Agent Orchestrator</h2>
       <p>Model: <b>{MODEL_NAME}</b></p>
       <textarea id='prompt' rows='6' placeholder='Type your instruction here...'></textarea>
-      <button onclick='run()'>Generate</button>
+      <button id='btn' onclick='run()'>Generate</button>
       <pre id='out'></pre>
       <script>
         async function run() {{
           const prompt = document.getElementById('prompt').value;
-          const r = await fetch('/api/generate', {{
-            method: 'POST', headers: {{ 'Content-Type': 'application/json' }},
-            body: JSON.stringify({{ prompt }})
-          }});
-          const data = await r.json();
-          document.getElementById('out').textContent = data.success ? data.output : ('Error: ' + (data.error || 'unknown'));
+          const btn = document.getElementById('btn');
+          const out = document.getElementById('out');
+          
+          if (!prompt.trim()) {{
+            out.textContent = 'Error: Please enter a prompt';
+            return;
+          }}
+          
+          btn.disabled = true;
+          out.className = 'loading';
+          out.textContent = 'Generating response... (this may take 30-60 seconds for first request)';
+          
+          try {{
+            const r = await fetch('/api/generate', {{
+              method: 'POST',
+              headers: {{ 'Content-Type': 'application/json' }},
+              body: JSON.stringify({{ prompt }})
+            }});
+            
+            if (!r.ok) {{
+              const err = await r.text();
+              out.textContent = 'Error: ' + err;
+              out.className = '';
+              btn.disabled = false;
+              return;
+            }}
+            
+            const data = await r.json();
+            out.className = '';
+            out.textContent = data.success ? data.output : ('Error: ' + (data.error || 'unknown'));
+          }} catch (e) {{
+            out.className = '';
+            out.textContent = 'Error: ' + e.message;
+          }} finally {{
+            btn.disabled = false;
+          }}
         }}
       </script>
     </body>
