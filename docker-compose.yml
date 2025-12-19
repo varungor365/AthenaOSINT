@@ -20,3 +20,14 @@ services:
     container_name: athena_redis
     ports:
       - "6379:6379"
+
+  openbullet2:
+    image: openbullet/openbullet2:latest
+    container_name: athena_openbullet
+    restart: always
+    ports:
+      - "8069:5000"
+    volumes:
+      - ./openbullet_data:/app/UserData
+    environment:
+      - DOTNET_CLI_TELEMETRY_OPTOUT=1

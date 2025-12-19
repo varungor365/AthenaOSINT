@@ -95,7 +95,7 @@ class ModuleIntegrationTests:
         
         for target, expected_type, should_be_valid in test_cases:
             detected = detect_target_type(target)
-            is_valid = validate_target(target)
+            is_valid = validate_target(target, detected)
             
             if detected == expected_type and is_valid == should_be_valid:
                 self.log(f"Validator {target}: OK", 'INFO')

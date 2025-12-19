@@ -15,13 +15,7 @@ from pathlib import Path
 from datetime import datetime
 from typing import Optional, Dict
 from loguru import logger
-
 import sys
-
-# Ensure parent directory is in path for imports
-current_dir = Path(__file__).resolve().parent
-if str(current_dir.parent) not in sys.path:
-    sys.path.insert(0, str(current_dir.parent))
 
 
 class BreachDaemonProcess(mp.Process):
@@ -409,8 +403,6 @@ if __name__ == '__main__':
             print(f"Cycles: {stats.get('cycles_completed', 0)}")
             print(f"Discovered: {stats.get('items_discovered', 0)}")
             print(f"Indexed: {stats.get('items_indexed', 0)}")
-            if stats.get('last_error'):
-                print(f"ERROR: {stats['last_error']}")
             
             if 'resource_usage' in stats:
                 usage = stats['resource_usage']

@@ -1,0 +1,304 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>AthenaOSINT - OpenBullet Operations</title>
+    <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css" rel="stylesheet">
+    <link
+        href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;600;700&family=JetBrains+Mono:wght@400;700&display=swap"
+        rel="stylesheet">
+    <style>
+        :root {
+            --bg-dark: #0f1115;
+            --bg-panel: rgba(30, 32, 40, 0.7);
+            --primary: #6366f1;
+            --primary-glow: rgba(99, 102, 241, 0.4);
+            --accent: #22d3ee;
+            --accent-glow: rgba(34, 211, 238, 0.4);
+            --text-main: #e2e8f0;
+            --text-muted: #94a3b8;
+            --success: #10b981;
+            --warning: #f59e0b;
+            --danger: #ef4444;
+            --border: rgba(255, 255, 255, 0.1);
+        }
+
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: 'Inter', sans-serif;
+            background-color: var(--bg-dark);
+            background-image:
+                radial-gradient(circle at 10% 20%, rgba(99, 102, 241, 0.1) 0%, transparent 20%),
+                radial-gradient(circle at 90% 80%, rgba(34, 211, 238, 0.1) 0%, transparent 20%);
+            color: var(--text-main);
+            height: 100vh;
+            overflow: hidden;
+            display: flex;
+        }
+
+        /* --- LAYOUT --- */
+        .sidebar {
+            width: 260px;
+            background: rgba(20, 20, 25, 0.8);
+            border-right: 1px solid var(--border);
+            display: flex;
+            flex-direction: column;
+            padding: 20px;
+            backdrop-filter: blur(10px);
+            z-index: 10;
+        }
+
+        .main-stage {
+            flex: 1;
+            display: flex;
+            flex-direction: column;
+            padding: 20px;
+            overflow-y: auto;
+            position: relative;
+        }
+
+        /* --- COMPONENTS --- */
+        .logo {
+            font-family: 'JetBrains Mono', monospace;
+            font-size: 1.5rem;
+            font-weight: 700;
+            color: white;
+            margin-bottom: 40px;
+            display: flex;
+            align-items: center;
+            gap: 10px;
+        }
+
+        .logo i {
+            color: var(--accent);
+            text-shadow: 0 0 10px var(--accent-glow);
+        }
+
+        .nav-item {
+            display: flex;
+            align-items: center;
+            gap: 12px;
+            padding: 12px 15px;
+            color: var(--text-muted);
+            text-decoration: none;
+            border-radius: 8px;
+            transition: all 0.2s;
+            margin-bottom: 5px;
+            cursor: pointer;
+        }
+
+        .nav-item:hover,
+        .nav-item.active {
+            background: rgba(255, 255, 255, 0.05);
+            color: white;
+            border-left: 3px solid var(--primary);
+        }
+
+        .card {
+            background: var(--bg-panel);
+            border: 1px solid var(--border);
+            border-radius: 12px;
+            padding: 20px;
+            margin-bottom: 20px;
+            box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1);
+        }
+
+        h2 {
+            font-size: 1.1rem;
+            color: white;
+            margin-bottom: 15px;
+            display: flex;
+            align-items: center;
+            gap: 8px;
+        }
+
+        .btn {
+            padding: 10px 20px;
+            border-radius: 8px;
+            border: none;
+            font-weight: 600;
+            cursor: pointer;
+            transition: all 0.3s;
+            display: inline-flex;
+            align-items: center;
+            gap: 8px;
+            color: white;
+        }
+
+        .btn-primary {
+            background: linear-gradient(135deg, var(--primary), #818cf8);
+        }
+
+        .btn-accent {
+            background: rgba(34, 211, 238, 0.1);
+            color: var(--accent);
+            border: 1px solid var(--accent);
+        }
+
+        .btn-accent:hover {
+            background: rgba(34, 211, 238, 0.2);
+        }
+
+        /* --- OB UI --- */
+        .ob-frame {
+            width: 100%;
+            height: 600px;
+            border: 1px solid var(--border);
+            border-radius: 12px;
+            background: #111;
+        }
+
+        table {
+            width: 100%;
+            border-collapse: collapse;
+            margin-top: 10px;
+        }
+
+        th,
+        td {
+            text-align: left;
+            padding: 12px;
+            border-bottom: 1px solid var(--border);
+        }
+
+        th {
+            color: var(--text-muted);
+            font-size: 0.85rem;
+            text-transform: uppercase;
+        }
+
+        .status-badge {
+            padding: 4px 8px;
+            border-radius: 4px;
+            font-size: 0.75rem;
+            font-weight: bold;
+        }
+
+        .status-running {
+            background: rgba(16, 185, 129, 0.2);
+            color: var(--success);
+        }
+
+        .status-idle {
+            background: rgba(245, 158, 11, 0.2);
+            color: var(--warning);
+        }
+    </style>
+</head>
+
+<body>
+
+    <!-- SIDEBAR -->
+    <nav class="sidebar">
+        <div class="logo">
+            <i class="fas fa-eye"></i> ATHENA
+        </div>
+        <div class="nav-links">
+            <a href="/" class="nav-item"><i class="fas fa-chart-line"></i> Dashboard</a>
+            <a href="/graph" class="nav-item"><i class="fas fa-network-wired"></i> Graph View</a>
+            <a href="/history" class="nav-item"><i class="fas fa-history"></i> History</a>
+            <div class="nav-item active"><i class="fas fa-meteor"></i> OpenBullet</div>
+            <a href="/settings" class="nav-item"><i class="fas fa-cog"></i> Settings</a>
+        </div>
+    </nav>
+
+    <!-- MAIN CENTER STAGE -->
+    <main class="main-stage">
+        <div style="margin-bottom: 30px; display: flex; justify-content: space-between; align-items: center;">
+            <div>
+                <h1 style="font-size: 2rem; font-weight: 300;">OpenBullet Operations</h1>
+                <p style="color: var(--text-muted);">Managed Config Runner</p>
+            </div>
+            <a href="http://{{ request.host.split(':')[0] }}:8069" target="_blank" class="btn btn-accent">
+                <i class="fas fa-external-link-alt"></i> Open Native Interface
+            </a>
+        </div>
+
+        <div class="card">
+            <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 20px;">
+                <h2><i class="fas fa-tasks"></i> Active Jobs</h2>
+                <button class="btn btn-primary" onclick="refreshJobs()"><i class="fas fa-sync"></i> Refresh</button>
+            </div>
+
+            <div id="jobs-container">
+                <table id="jobs-table">
+                    <thead>
+                        <tr>
+                            <th>ID</th>
+                            <th>Config</th>
+                            <th>Bots</th>
+                            <th>Status</th>
+                            <th>Hits</th>
+                            <th>CPM</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        <!-- Populated by JS -->
+                        <tr>
+                            <td colspan="6" style="text-align:center; color: var(--text-muted);">Loading jobs...</td>
+                        </tr>
+                    </tbody>
+                </table>
+            </div>
+        </div>
+
+        <!-- Quick Actions (Placeholder for now) -->
+        <div class="card">
+            <h2><i class="fas fa-bolt"></i> Quick Actions</h2>
+            <div style="display: flex; gap: 10px;">
+                <button class="btn btn-accent"
+                    onclick="alert('Please use the Native Interface to create full jobs for now.')">
+                    <i class="fas fa-plus"></i> Create New Job
+                </button>
+            </div>
+        </div>
+
+    </main>
+
+    <script>
+        async function refreshJobs() {
+            const tbody = document.querySelector('#jobs-table tbody');
+            tbody.innerHTML = '<tr><td colspan="6" style="text-align:center; color: var(--text-muted);">Refreshing...</td></tr>';
+
+            try {
+                const res = await fetch('/api/openbullet/jobs');
+                const data = await res.json();
+
+                if (data.success && data.jobs.length > 0) {
+                    tbody.innerHTML = '';
+                    data.jobs.forEach(job => {
+                        const tr = document.createElement('tr');
+                        tr.innerHTML = `
+                            <td>${job.id}</td>
+                            <td>${job.config ? job.config.name : 'Unknown'}</td>
+                            <td>${job.bots}</td>
+                            <td><span class="status-badge ${job.status === 'Running' ? 'status-running' : 'status-idle'}">${job.status}</span></td>
+                            <td>${job.hits}</td>
+                            <td>${job.cpm}</td>
+                        `;
+                        tbody.appendChild(tr);
+                    });
+                } else {
+                    tbody.innerHTML = '<tr><td colspan="6" style="text-align:center; color: var(--text-muted);">No active jobs found. Use Native Interface to create one.</td></tr>';
+                }
+            } catch (e) {
+                console.error(e);
+                tbody.innerHTML = '<tr><td colspan="6" style="text-align:center; color: var(--danger);">Failed to connect to OpenBullet Service.</td></tr>';
+            }
+        }
+
+        // Initial Load
+        document.addEventListener('DOMContentLoaded', refreshJobs);
+        // Auto refresh every 5s
+        setInterval(refreshJobs, 5000);
+    </script>
+</body>
+
+</html>
