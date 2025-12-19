@@ -1,5 +1,7 @@
 import os
 import subprocess
+import requests
+import json
 from typing import Optional
 
 from fastapi import FastAPI, Request
@@ -90,21 +92,37 @@ def _has_ollama() -> bool:
 
 
 def _ollama_generate(model: str, prompt: str, system: Optional[str], temperature: float, max_tokens: int) -> str:
-    # Use ollama CLI with JSON mode for simplicity
-    import json
-    import tempfile
-    # Build JSON prompt object
-    req = {"model": model, "prompt": prompt, "options": {"temperature": temperature, "num_predict": max_tokens}}
+    """Generate text using Ollama HTTP API instead of CLI for reliability."""
+    url = "http://127.0.0.1:11434/api/generate"
+    payload = {
+        "model": model,
+        "prompt": prompt,
+        "options": {
+            "temperature": temperature,
+            "num_predict": max_tokens
+        }
+    }
     if system:
-        req["system"] = system
-    with tempfile.NamedTemporaryFile("w", delete=False) as f:
-        json.dump(req, f)
-        f.flush()
-        cmd = ["ollama", "run", model, "-J", f.name]
-        res = subprocess.run(cmd, capture_output=True, text=True)
-        if res.returncode != 0:
-            raise RuntimeError(res.stderr.strip() or res.stdout.strip())
-        return res.stdout.strip()
+        payload["system"] = system
+    
+    try:
+        response = requests.post(url, json=payload, timeout=120)
+        response.raise_for_status()
+        
+        # Ollama returns newline-delimited JSON; parse the last complete response
+        lines = response.text.strip().split('\n')
+        if lines:
+            last_response = json.loads(lines[-1])
+            return last_response.get('response', '').strip()
+        return ""
+    except requests.exceptions.ConnectionError:
+        raise RuntimeError("Ollama service not running on http://127.0.0.1:11434")
+    except requests.exceptions.Timeout:
+        raise RuntimeError("Ollama request timed out (model may be loading)")
+    except json.JSONDecodeError as e:
+        raise RuntimeError(f"Invalid response from Ollama: {e}")
+    except Exception as e:
+        raise RuntimeError(f"Ollama error: {str(e)}")
 
 if __name__ == "__main__":
     import uvicorn
