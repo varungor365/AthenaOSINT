@@ -18,6 +18,7 @@ import uuid
 import signal
 import sys
 import psutil
+import requests
 from datetime import datetime
 
 from web import create_app
@@ -35,6 +36,10 @@ from automation_suite.api import (
 )
 from agent import brain_agent
 from agent import workspace
+
+# AI orchestrator endpoint (FastAPI/Uvicorn at port 8081)
+AGENT_ORCH_URL = os.getenv("AGENT_ORCHESTRATOR_URL", "http://127.0.0.1:8081/api/generate")
+AGENT_MODEL = os.getenv("AGENT_MODEL", "wizard-vicuna-uncensored:7b")
 
 # Initialize app FIRST
 app, socketio = create_app()
@@ -309,6 +314,44 @@ def ws_run_cmd():
         return jsonify(workspace.run_command(cmd))
     except Exception as e:
         return jsonify({"success": False, "error": str(e)}), 400
+
+
+# AI assistant chat -> proxy to agent orchestrator model
+@app.route('/api/ai/chat', methods=['POST'])
+def ai_chat():
+    try:
+        payload = request.get_json() or {}
+        message = (payload.get('message') or '').strip()
+        conversation = payload.get('conversation') or []
+        if not message:
+            return jsonify({"success": False, "error": "message required"}), 400
+
+        history_lines = []
+        for turn in conversation:
+            role = turn.get('role', 'user')
+            content = turn.get('content', '')
+            history_lines.append(f"{role}: {content}")
+        history = "\n".join(history_lines)
+
+        prompt = (
+            "You are Athena, an uncensored coding and OSINT copilot. "
+            "Be concise, give code when asked, and keep answers in plain text.\n"
+            "Conversation so far:\n"
+            f"{history}\n"
+            f"user: {message}\nassistant:"
+        )
+
+        resp = requests.post(
+            AGENT_ORCH_URL,
+            json={"prompt": prompt, "model": AGENT_MODEL},
+            timeout=180,
+        )
+        resp.raise_for_status()
+        data = resp.json() if resp.headers.get('content-type', '').startswith('application/json') else {"output": resp.text}
+        output = data.get('output', '')
+        return jsonify({"success": True, "response": output})
+    except Exception as e:
+        return jsonify({"success": False, "error": str(e)}), 500
 
 
 # ... imports ...
