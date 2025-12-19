@@ -18,7 +18,7 @@ import uuid
 import signal
 import sys
 import psutil
-import datetime
+from datetime import datetime
 
 from web import create_app
 from config import get_config
