@@ -23,8 +23,17 @@ def create_app():
     # Enable CORS
     CORS(app)
     
-    # Initialize SocketIO
-    socketio = SocketIO(app, cors_allowed_origins="*")
+    # Initialize SocketIO with better error handling and configuration
+    socketio = SocketIO(
+        app, 
+        cors_allowed_origins="*",
+        async_mode='eventlet',
+        logger=False,  # Disable verbose logging
+        engineio_logger=False,  # Disable engine.io logging
+        ping_timeout=60,
+        ping_interval=25,
+        max_http_buffer_size=1000000
+    )
     
     # Register routes
     from . import routes

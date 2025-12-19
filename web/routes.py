@@ -226,9 +226,9 @@ def upload_data():
         # Otherwise, provide manual indexing option
         message = f'Uploaded {len(uploaded_files)} file(s). '
         
-        from core.breach_daemon import get_daemon
-        daemon = get_daemon()
-        if daemon and daemon.is_alive():
+        from core.breach_daemon_mp import get_daemon_manager
+        manager = get_daemon_manager()
+        if manager.is_running():
             message += 'Breach daemon will automatically index them.'
         else:
             message += 'Start breach monitoring to auto-index, or use manual indexing.'
@@ -706,36 +706,43 @@ def handle_ping():
 def start_breach_daemon():
     """Start the autonomous breach monitoring daemon."""
     try:
-        from core.breach_daemon import start_daemon, get_daemon
+        from core.breach_daemon_mp import get_daemon_manager
+        
+        manager = get_daemon_manager()
         
         # Check if already running
-        daemon = get_daemon()
-        if daemon and daemon.is_alive():
+        if manager.is_running():
             return jsonify({
                 'success': True,
                 'message': 'Breach daemon already running',
-                'stats': daemon.get_stats()
+                'stats': manager.get_stats()
             })
         
         # Start daemon with config
-        max_cpu = float(request.json.get('max_cpu_percent', 30.0))
-        max_memory = int(request.json.get('max_memory_mb', 512))
-        interval = int(request.json.get('check_interval', 1800))
+        max_cpu = float(request.json.get('max_cpu_percent', 30.0)) if request.json else 30.0
+        max_memory = int(request.json.get('max_memory_mb', 512)) if request.json else 512
+        interval = int(request.json.get('check_interval', 1800)) if request.json else 1800
         
-        daemon = start_daemon(
+        started = manager.start(
             max_cpu_percent=max_cpu,
             max_memory_mb=max_memory,
             check_interval=interval
         )
         
-        return jsonify({
-            'success': True,
-            'message': 'Breach daemon started',
-            'stats': daemon.get_stats()
-        })
+        if started:
+            return jsonify({
+                'success': True,
+                'message': 'Breach daemon started successfully',
+                'stats': manager.get_stats()
+            })
+        else:
+            return jsonify({
+                'success': False,
+                'error': 'Failed to start daemon'
+            }), 500
     
     except Exception as e:
-        logger.error(f"Failed to start breach daemon: {e}")
+        logger.error(f"Failed to start breach daemon: {e}", exc_info=True)
         return jsonify({'success': False, 'error': str(e)}), 500
 
 
@@ -744,16 +751,18 @@ def start_breach_daemon():
 def stop_breach_daemon():
     """Stop the breach monitoring daemon."""
     try:
-        from core.breach_daemon import stop_daemon
-        stop_daemon()
+        from core.breach_daemon_mp import get_daemon_manager
+        
+        manager = get_daemon_manager()
+        stopped = manager.stop()
         
         return jsonify({
             'success': True,
-            'message': 'Breach daemon stopped'
+            'message': 'Breach daemon stopped' if stopped else 'Daemon was not running'
         })
     
     except Exception as e:
-        logger.error(f"Failed to stop breach daemon: {e}")
+        logger.error(f"Failed to stop breach daemon: {e}", exc_info=True)
         return jsonify({'success': False, 'error': str(e)}), 500
 
 
@@ -761,26 +770,21 @@ def stop_breach_daemon():
 def get_breach_daemon_status():
     """Get breach daemon status and statistics."""
     try:
-        from core.breach_daemon import get_daemon
+        from core.breach_daemon_mp import get_daemon_manager
         
-        daemon = get_daemon()
-        if not daemon or not daemon.is_alive():
-            return jsonify({
-                'success': True,
-                'running': False,
-                'message': 'Breach daemon not running'
-            })
-        
-        stats = daemon.get_stats()
+        manager = get_daemon_manager()
+        running = manager.is_running()
+        stats = manager.get_stats()
         
         return jsonify({
             'success': True,
-            'running': True,
-            'stats': stats
+            'running': running,
+            'stats': stats,
+            'message': 'Daemon running' if running else 'Daemon not running'
         })
     
     except Exception as e:
-        logger.error(f"Failed to get daemon status: {e}")
+        logger.error(f"Failed to get daemon status: {e}", exc_info=True)
         return jsonify({'success': False, 'error': str(e)}), 500
 
 
@@ -789,16 +793,18 @@ def get_breach_daemon_status():
 def pause_breach_daemon():
     """Pause the breach daemon."""
     try:
-        from core.breach_daemon import get_daemon
-        daemon = get_daemon()
+        from core.breach_daemon_mp import get_daemon_manager
         
-        if daemon:
-            daemon.pause()
+        manager = get_daemon_manager()
+        
+        if manager.is_running():
+            paused = manager.pause()
             return jsonify({'success': True, 'message': 'Daemon paused'})
         else:
             return jsonify({'success': False, 'error': 'Daemon not running'}), 400
     
     except Exception as e:
+        logger.error(f"Failed to pause daemon: {e}", exc_info=True)
         return jsonify({'success': False, 'error': str(e)}), 500
 
 
@@ -807,16 +813,18 @@ def pause_breach_daemon():
 def resume_breach_daemon():
     """Resume the breach daemon."""
     try:
-        from core.breach_daemon import get_daemon
-        daemon = get_daemon()
+        from core.breach_daemon_mp import get_daemon_manager
         
-        if daemon:
-            daemon.resume()
+        manager = get_daemon_manager()
+        
+        if manager.is_running():
+            resumed = manager.resume()
             return jsonify({'success': True, 'message': 'Daemon resumed'})
         else:
             return jsonify({'success': False, 'error': 'Daemon not running'}), 400
     
     except Exception as e:
+        logger.error(f"Failed to resume daemon: {e}", exc_info=True)
         return jsonify({'success': False, 'error': str(e)}), 500
 
 
