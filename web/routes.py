@@ -25,6 +25,7 @@ from config import get_config
 from core.engine import AthenaEngine
 from core.validators import validate_target, detect_target_type
 from modules import get_available_modules
+from automation_suite.api import list_jobs as auto_list_jobs, create_job as auto_create_job, run_job as auto_run_job, proxies as auto_proxies
 
 # Initialize app FIRST
 app, socketio = create_app()
@@ -107,6 +108,13 @@ def api_keys_view():
     return render_template('api_keys.html')
 
 
+@app.route('/automation')
+@login_required
+def automation_suite_view():
+    """Render Automation Suite dashboard."""
+    return render_template('automation_suite.html')
+
+
 @app.route('/api/modules', methods=['GET'])
 def get_modules():
     """Get list of available OSINT modules.
@@ -126,6 +134,45 @@ def get_modules():
             'success': False,
             'error': str(e)
         }), 500
+
+
+# Automation Suite APIs (safe, authorized use only)
+@app.route('/api/automation/jobs', methods=['GET'])
+def automation_jobs():
+    try:
+        return jsonify(auto_list_jobs())
+    except Exception as e:
+        return jsonify({'success': False, 'error': str(e)}), 500
+
+
+@app.route('/api/automation/jobs', methods=['POST'])
+def automation_create_job():
+    try:
+        data = request.get_json() or {}
+        result = auto_create_job(data)
+        return jsonify(result)
+    except Exception as e:
+        return jsonify({'success': False, 'error': str(e)}), 400
+
+
+@app.route('/api/automation/run/<job_id>', methods=['POST'])
+def automation_run_job(job_id):
+    try:
+        # emit progress via socketio
+        def on_progress(evt):
+            socketio.emit('automation_progress', evt)
+        result = auto_run_job(job_id, on_progress=on_progress)
+        return jsonify(result)
+    except Exception as e:
+        return jsonify({'success': False, 'error': str(e)}), 400
+
+
+@app.route('/api/automation/proxies', methods=['GET'])
+def automation_proxies():
+    try:
+        return jsonify(auto_proxies())
+    except Exception as e:
+        return jsonify({'success': False, 'error': str(e)}), 500
 
 
 # ... imports ...

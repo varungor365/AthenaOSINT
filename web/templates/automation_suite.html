@@ -1,0 +1,152 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Automation Suite - AthenaOSINT</title>
+  <script src="https://cdn.socket.io/4.5.4/socket.io.min.js"></script>
+  <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css" rel="stylesheet">
+  <link href="https://fonts.googleapis.com/css2?family=Orbitron:wght@400;700;900&family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+  <style>
+    :root {
+      --bg-primary: #0a0e27;
+      --bg-card: rgba(15, 20, 35, 0.95);
+      --primary: #00d9ff;
+      --accent: #8338ec;
+      --text-primary: #ffffff;
+      --text-secondary: #94a3b8;
+      --border: rgba(0, 217, 255, 0.2);
+    }
+    body { font-family: 'Inter', sans-serif; background: var(--bg-primary); color: var(--text-primary); }
+    .container { max-width: 1600px; margin: 0 auto; padding: 30px; }
+    .header { display:flex; justify-content:space-between; align-items:center; margin-bottom:30px; padding-bottom:15px; border-bottom:1px solid var(--border); }
+    .page-title { font-family:'Orbitron',sans-serif; font-size:28px; font-weight:900; background:linear-gradient(135deg,var(--primary),var(--accent)); -webkit-background-clip:text; -webkit-text-fill-color:transparent; display:flex; align-items:center; gap:10px; }
+    .back-btn { padding:10px 20px; border:1px solid var(--border); border-radius:10px; text-decoration:none; color:var(--text-primary); }
+    .grid { display:grid; grid-template-columns: 1.1fr 0.9fr; gap:20px; }
+    .card { background:var(--bg-card); border:1px solid var(--border); border-radius:15px; padding:20px; }
+    .card h3 { margin-bottom:12px; font-size:16px; color:var(--primary); }
+    .controls { display:flex; gap:10px; margin-bottom:15px; }
+    .input, .select { padding:12px; background:rgba(255,255,255,0.05); border:1px solid var(--border); border-radius:10px; color:var(--text-primary); }
+    .btn { padding:12px 16px; border-radius:10px; border: none; cursor:pointer; font-weight:600; }
+    .btn-primary { background: linear-gradient(135deg, var(--primary), var(--accent)); color:#fff; }
+    .jobs { display:flex; flex-direction:column; gap:10px; }
+    .job { padding:12px; border:1px solid var(--border); border-radius:10px; display:flex; justify-content:space-between; align-items:center; }
+    .job .meta { color:var(--text-secondary); font-size:12px; }
+    .logs { max-height:240px; overflow:auto; font-family:"Courier New", monospace; font-size:12px; background:rgba(0,0,0,0.4); padding:10px; border-radius:10px; }
+    .log { margin-bottom:6px; color:var(--text-secondary); }
+    .stat { display:grid; grid-template-columns: repeat(4, 1fr); gap:12px; margin-bottom:12px; }
+    .stat .box { background:rgba(255,255,255,0.03); border:1px solid var(--border); border-radius:10px; padding:12px; text-align:center; }
+  </style>
+</head>
+<body>
+  <div class="container">
+    <div class="header">
+      <div class="page-title"><i class="fas fa-robot"></i> Automation Suite</div>
+      <a href="/" class="back-btn"><i class="fas fa-arrow-left"></i> Back</a>
+    </div>
+
+    <div class="grid">
+      <div class="card">
+        <h3>New Job</h3>
+        <div class="controls">
+          <input class="input" id="target" placeholder="Authorized target (e.g., mycompany.com)">
+          <select class="select" id="jobType">
+            <option value="browser_scrape">Browser Scrape</option>
+            <option value="screenshot">Screenshot</option>
+            <option value="fuzzer">Fuzzer (authorized only)</option>
+            <option value="proxy_refresh">Refresh Proxies</option>
+          </select>
+          <input class="input" id="paramUrl" placeholder="URL / Endpoint">
+          <button class="btn btn-primary" onclick="createJob()"><i class="fas fa-plus"></i> Create</button>
+        </div>
+        <div class="stat">
+          <div class="box"><div id="countQueued">0</div><small>Queued</small></div>
+          <div class="box"><div id="countRunning">0</div><small>Running</small></div>
+          <div class="box"><div id="countDone">0</div><small>Completed</small></div>
+          <div class="box"><div id="countFailed">0</div><small>Failed</small></div>
+        </div>
+        <div class="jobs" id="jobs"></div>
+      </div>
+      <div class="card">
+        <h3>Logs</h3>
+        <div class="logs" id="logs"></div>
+        <h3 style="margin-top:12px;">Current Proxies</h3>
+        <div class="logs" id="proxies"></div>
+      </div>
+    </div>
+  </div>
+
+  <script>
+    const socket = io();
+    socket.on('automation_progress', (evt) => {
+      addLog(`[${evt.job_id}] status=${evt.status}${evt.error ? ' error='+evt.error : ''}`);
+      loadJobs();
+    });
+
+    function addLog(text) {
+      const el = document.getElementById('logs');
+      const div = document.createElement('div');
+      div.className = 'log';
+      div.textContent = text;
+      el.appendChild(div);
+      el.scrollTop = el.scrollHeight;
+    }
+
+    async function loadJobs() {
+      const r = await fetch('/api/automation/jobs');
+      const data = await r.json();
+      if (!data.success) return;
+      const jobs = data.jobs || [];
+      document.getElementById('jobs').innerHTML = jobs.map(j => `
+        <div class='job'>
+          <div>
+            <strong>${j.job_type}</strong> → ${j.target}<br>
+            <span class='meta'>id=${j.id} • created=${j.created_at} • status=${j.status}</span>
+          </div>
+          <div>
+            ${j.status === 'queued' ? `<button class='btn' onclick="runJob('${j.id}')"><i class='fas fa-play'></i> Run</button>` : ''}
+          </div>
+        </div>`).join('');
+
+      const q = jobs.filter(j => j.status === 'queued').length;
+      const r2 = jobs.filter(j => j.status === 'running').length;
+      const c = jobs.filter(j => j.status === 'completed').length;
+      const f = jobs.filter(j => j.status === 'failed').length;
+      document.getElementById('countQueued').textContent = q;
+      document.getElementById('countRunning').textContent = r2;
+      document.getElementById('countDone').textContent = c;
+      document.getElementById('countFailed').textContent = f;
+    }
+
+    async function runJob(id) {
+      const r = await fetch(`/api/automation/run/${id}`, { method: 'POST' });
+      const data = await r.json();
+      if (!data.success) addLog('Run failed: ' + (data.error || 'unknown'));
+      else addLog('Job started: ' + id);
+    }
+
+    async function createJob() {
+      const target = document.getElementById('target').value.trim();
+      const jobType = document.getElementById('jobType').value;
+      const url = document.getElementById('paramUrl').value.trim();
+      const payload = { target, job_type: jobType, params: { url, allowed: true } };
+      const r = await fetch('/api/automation/jobs', { method:'POST', headers:{'Content-Type':'application/json'}, body: JSON.stringify(payload) });
+      const data = await r.json();
+      if (!data.success) { addLog('Create failed: '+(data.error || 'unknown')); return; }
+      addLog('Job created: ' + data.job.id);
+      loadJobs();
+    }
+
+    async function loadProxies() {
+      const r = await fetch('/api/automation/proxies');
+      const data = await r.json();
+      if (!data.success) return;
+      const list = data.proxies || [];
+      document.getElementById('proxies').innerHTML = list.map(p => `<div class='log'>${p}</div>`).join('');
+    }
+
+    loadJobs();
+    loadProxies();
+  </script>
+</body>
+</html>
