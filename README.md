@@ -75,6 +75,37 @@ cp .env.example .env
 
 ### Basic Usage
 
+## Deploy Agent Orchestrator on Ubuntu Droplet
+
+For your 8GB RAM / 4 vCPU Ubuntu 22.04 droplet, use the included bootstrap script to install a local model runtime (Ollama) and a minimal web orchestrator.
+
+Steps:
+
+1) Copy the bootstrap script to your server and run it as root:
+
+  scp scripts/bootstrap_agent.sh ubuntu@<SERVER-IP>:/tmp/
+  ssh ubuntu@<SERVER-IP>
+  sudo bash /tmp/bootstrap_agent.sh
+
+2) After it completes, access the orchestrator UI at:
+
+  http://<SERVER-IP>:8081/
+
+3) Service management:
+
+  sudo systemctl status agent-orchestrator
+  sudo systemctl restart agent-orchestrator
+
+4) Change default model (optional):
+
+  sudo systemctl edit agent-orchestrator
+  # Add or update: Environment=AGENT_MODEL=mistral
+  sudo systemctl daemon-reload && sudo systemctl restart agent-orchestrator
+
+Notes:
+- The script installs Ollama and pulls the "mistral" model for CPU. You can change to another local model later (e.g., `qwen2.5`), or import your own.
+- For strictly offline operation after bootstrap, disable outbound traffic with ufw and ensure your model files are present locally.
+
 #### Command Line Interface
 
 ```bash
