@@ -27,7 +27,7 @@ def scan(target: str, profile: Profile) -> None:
     # 1. Bios
     if 'social_details' in profile.raw_data:
         for site, details in profile.raw_data['social_details'].items():
-            if details.get('bio'):
+            if details and details.get('bio'):
                 text_corpus.append(f"Bio ({site}): {details['bio']}")
                 
     # 2. Metadata (Author names, Titles)

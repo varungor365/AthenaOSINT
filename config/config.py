@@ -45,6 +45,7 @@ class Config:
             'HUNTER_API_KEYS': self._parse_list(os.getenv('HUNTER_API_KEY', '')),
             'GROQ_API_KEYS': self._parse_list(os.getenv('GROQ_API_KEY', '')),
             'GITHUB_API_KEYS': self._parse_list(os.getenv('GITHUB_API_KEY', '')),
+            'OPENROUTER_API_KEY': os.getenv('OPENROUTER_API_KEY', ''),
             
             # Flask settings
             'FLASK_ENV': os.getenv('FLASK_ENV', 'development'),
@@ -57,6 +58,7 @@ class Config:
             'MAX_SCAN_DEPTH': int(os.getenv('MAX_SCAN_DEPTH', 3)),
             'RATE_LIMIT': int(os.getenv('RATE_LIMIT', 60)),
             'MODULE_TIMEOUT': int(os.getenv('MODULE_TIMEOUT', 300)),
+            'ENABLE_ACTIVE_CHECKING': os.getenv('ENABLE_ACTIVE_CHECKING', 'False').lower() == 'true',
             
             # AI Settings
             'AI_PROVIDER': os.getenv('AI_PROVIDER', 'groq'),  # groq, ollama, openai
@@ -101,20 +103,20 @@ class Config:
         """Validate critical configuration settings."""
         warnings = []
         
-        # Check for missing API keys (non-critical)
+        # Check for missing API keys (non-critical, Free Mode available)
         if not self._config['HIBP_API_KEYS']:
-            warnings.append("HIBP_API_KEY not set - breach checking will be limited")
+            logger.info("HIBP_API_KEY not set - running in Free Mode (Local Vault Only)")
         
         if not self._config['DEHASHED_API_KEYS']:
-            warnings.append("DEHASHED_API_KEY not set - advanced leak checking disabled")
+            logger.info("DEHASHED_API_KEY not set - advanced leak checking disabled")
         
         if not self._config['TELEGRAM_BOT_TOKEN']:
-            warnings.append("TELEGRAM_BOT_TOKEN not set - bot functionality disabled")
+            logger.info("TELEGRAM_BOT_TOKEN not set - bot functionality disabled")
             
         if not self._config['GROQ_API_KEYS'] and self._config['AI_PROVIDER'] == 'groq':
-             warnings.append("GROQ_API_KEY not set but provider is 'groq' - AI features may fail")
+             logger.info("GROQ_API_KEY not set - falling back to Local AI (Ollama)")
         
-        # Log warnings
+        # Log warnings (none for now)
         for warning in warnings:
             logger.warning(warning)
     

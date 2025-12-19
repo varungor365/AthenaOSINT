@@ -55,7 +55,80 @@ class BackgroundWorker(threading.Thread):
         for file_path in files:
             logger.info(f"[ARCHIVE] Ingesting file: {file_path.name}")
             try:
-                # 1. Digest & Learn (Streaming)
+                # 1. SPECIAL HANDLING: Combo Lists (Breach Vault)
+                # Check if this is a combo list first using BreachProcessor
+                is_combo, stats, analysis = False, {}, {}
+                
+                try:
+                    from modules.breach_processor import BreachProcessor
+                    from intelligence.breach_analyzer import BreachAnalyzer
+                    
+                    processor = BreachProcessor()
+                    # Check first 5 lines
+                    with open(file_path, 'r', encoding='utf-8', errors='ignore') as f:
+                        head = [next(f).strip() for _ in range(5)]
+                    
+                    # Heuristic: at least 3/5 lines have a separator and look like user:pass
+                    valid_lines = sum(1 for line in head if processor.parse_line(line)[0] is not None)
+                    
+                    if valid_lines >= 3:
+                        logger.info(f"  [Breach Vault] Detected combo list: {file_path.name}")
+                        is_combo = True
+                        
+                        # A. Clean & Sort
+                        clean_path = PROCESSED_DIR / f"clean_{file_path.name}"
+                        stats = processor.clean_combos(file_path, clean_path)
+                        
+                        # B. AI Analysis
+                        analyzer = BreachAnalyzer()
+                        # Read sample from clean file for analysis
+                        with open(clean_path, 'r', encoding='utf-8') as f:
+                            sample_combos = [line.strip() for _, line in zip(range(100), f)]
+                        
+                        analysis = analyzer.analyze_batch(sample_combos)
+                        
+                        # Save Analysis Report
+                        report_data = {
+                            "filename": file_path.name,
+                            "stats": stats,
+                            "analysis": analysis,
+                            "timestamp": time.time()
+                        }
+                        
+                        report_path = Path(f"data/reports/vault_{int(time.time())}.json")
+                        report_path.parent.mkdir(parents=True, exist_ok=True)
+                        import json
+                        with open(report_path, 'w') as f:
+                            json.dump(report_data, f, indent=2)
+                            
+                        logger.info(f"  [Breach Vault] Analysis saved to {report_path}")
+                        
+                        # C. Active Mega.nz Checker (User Request)
+                        # Only if enabled in config
+                        from config import get_config
+                        if get_config().get('ENABLE_ACTIVE_CHECKING', False):
+                            logger.info(f"  [Mega Checker] Active checking enabled. Validating {len(sample_combos)} combos...")
+                            from modules.mega_checker import MegaChecker
+                            mega_checker = MegaChecker()
+                            
+                            # Check a batch (limit to 50 for safety in this demo)
+                            valid_hits = mega_checker.check_batch(sample_combos[:50])
+                            
+                            if valid_hits:
+                                logger.success(f"  [Mega Checker] Found {len(valid_hits)} VALID Mega.nz accounts!")
+                                # Save hits
+                                hits_path = Path(f"data/reports/mega_hits_{int(time.time())}.json")
+                                with open(hits_path, 'w') as f:
+                                    json.dump(valid_hits, f, indent=2)
+
+                        # Replace original file with cleaned version for generic ingestion?
+                        # Or just ingest the cleaned version.
+                        # For now, we perform generic ingestion on the ORIGINAL file as before, 
+                        # but we have the vault stats now.
+                except Exception as e:
+                     logger.warning(f"Combo detection/processing failed: {e}")
+
+                # 2. Generic Ingestion (Entity Extraction)
                 # Use stream to avoid loading entire file into memory
                 entity_count = 0
                 for item in self.ingestor.process_file_stream(str(file_path)):
@@ -103,11 +176,15 @@ class BackgroundWorker(threading.Thread):
             except Exception as e:
                 logger.error(f"  └─ Failed to process {file_path.name}: {e}")
                 # Ensure we don't loop forever on failed file
-                if (FAILED_DIR / file_path.name).exists():
+                target_failed = FAILED_DIR / file_path.name
+                if target_failed.exists():
                      timestamp = int(time.time())
-                     shutil.move(str(file_path), str(FAILED_DIR / f"{file_path.name}_{timestamp}"))
-                else:
-                    shutil.move(str(file_path), str(FAILED_DIR / file_path.name))
+                     target_failed = FAILED_DIR / f"{file_path.name}_{timestamp}"
+                
+                try:
+                    shutil.move(str(file_path), str(target_failed))
+                except Exception as mv_err:
+                    logger.error(f"Failed to move to failed dir: {mv_err}")
 
     def _trigger_recursive_scan(self, target):
         """

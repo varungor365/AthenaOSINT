@@ -65,6 +65,7 @@ def scan(target: str, profile) -> None:
                 profile.add_breach(breach)
             total_breaches += len(dehashed_results)
     
+    
     # Check IntelX (if API key available)
     if config.has_api_key('INTELX'):
         intelx_results = _check_intelx(target, config)
@@ -72,6 +73,14 @@ def scan(target: str, profile) -> None:
             for breach in intelx_results:
                 profile.add_breach(breach)
             total_breaches += len(intelx_results)
+
+    # 4. Check Local Vault (ALWAYS RUN - Free Mode)
+    local_results = _check_local_vault(target)
+    if local_results:
+        for breach in local_results:
+            profile.add_breach(breach)
+        total_breaches += len(local_results)
+
     
     # Add email to profile
     if total_breaches > 0:
@@ -84,7 +93,8 @@ def scan(target: str, profile) -> None:
         'sources': {
             'hibp': len(hibp_breaches) if hibp_breaches else 0,
             'dehashed': len(dehashed_results) if 'dehashed_results' in locals() else 0,
-            'intelx': len(intelx_results) if 'intelx_results' in locals() else 0
+            'intelx': len(intelx_results) if 'intelx_results' in locals() else 0,
+            'local_vault': len(local_results)
         }
     }
     
@@ -355,3 +365,63 @@ def check_password_paste(password_hash: str) -> bool:
     except Exception as e:
         logger.error(f"Password paste check failed: {e}")
         return False
+
+
+def _check_local_vault(target: str) -> List[Dict[str, Any]]:
+    """Check local processed breach files for the target.
+    
+    Args:
+        target: Email/Username to check
+        
+    Returns:
+        List of breach findings
+    """
+    from pathlib import Path
+    import os
+    
+    PROCESSED_DIR = Path("data/processed")
+    found_breaches = []
+    
+    if not PROCESSED_DIR.exists():
+        return []
+        
+    print(f"  {Fore.CYAN}└─ Checking Local Breach Vault...{Style.RESET_ALL}")
+    
+    try:
+        # Search all cleaned files
+        for file_path in PROCESSED_DIR.glob("clean_*"):
+            try:
+                # Use Grep for speed (if on linux) or simple python read
+                # Python read line by line efficiently
+                with open(file_path, 'r', encoding='utf-8', errors='ignore') as f:
+                    for line_num, line in enumerate(f, 1):
+                        if target in line:
+                            # Parse credential
+                            try:
+                                parts = line.strip().split(':', 1)
+                                if len(parts) == 2:
+                                    user, password = parts
+                                    if user == target:
+                                         found_breaches.append({
+                                            'source': 'Local Vault',
+                                            'name': file_path.name.replace('clean_', ''),
+                                            'date': time.strftime('%Y-%m-%d', time.gmtime(os.path.getmtime(file_path))),
+                                            'title': 'Local Breach Data',
+                                            'description': f'Found in {file_path.name} line {line_num}',
+                                            'password': password,  # We found the password
+                                            'data_classes': ['Email', 'Password']
+                                        })
+                            except:
+                                continue
+            except Exception as fe:
+                continue
+                
+        if found_breaches:
+            logger.info(f"Local Vault: Found {len(found_breaches)} hits")
+        
+        return found_breaches
+        
+    except Exception as e:
+        logger.error(f"Local vault check failed: {e}")
+        return []
+

@@ -393,7 +393,8 @@
         #jarvis-widget {
             position: fixed;
             bottom: 20px;
-            right: 20px;
+            left: 20px;
+            /* Moved to left */
             width: 350px;
             height: 500px;
             background: rgba(17, 24, 39, 0.95);
@@ -403,22 +404,42 @@
             display: flex;
             flex-direction: column;
             z-index: 9999;
-            /* Ensure it stays on top but check overlap */
             transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
             backdrop-filter: blur(10px);
+            opacity: 0;
+            pointer-events: none;
+            transform: translateY(20px);
         }
 
-        #jarvis-widget.collapsed {
+        #jarvis-widget.active {
+            opacity: 1;
+            pointer-events: all;
+            transform: translateY(0);
+        }
+
+        .jarvis-toggle-btn {
+            position: fixed;
+            bottom: 20px;
+            left: 20px;
+            width: 50px;
             height: 50px;
-            overflow: hidden;
-            border-color: var(--secondary);
-            width: 250px;
-            /* Shrink width when collapsed */
+            border-radius: 50%;
+            background: linear-gradient(135deg, var(--primary), #818cf8);
+            border: none;
+            color: white;
+            font-size: 1.2rem;
+            cursor: pointer;
+            box-shadow: 0 4px 15px var(--primary-glow);
+            z-index: 10000;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            transition: all 0.3s;
         }
 
-        .jarvis-widget.collapsed .jarvis-body,
-        .jarvis-widget.collapsed .jarvis-input-area {
-            display: none;
+        .jarvis-toggle-btn:hover {
+            transform: scale(1.1);
+            box-shadow: 0 6px 20px var(--primary-glow);
         }
 
         .jarvis-header {
@@ -603,6 +624,16 @@
             </div>
         </div>
 
+        <!-- Breach Vault Widget -->
+        <div class="card" style="flex: 1; display: flex; flex-direction: column;">
+            <h2><i class="fas fa-file-shield"></i> Breach Vault</h2>
+            <div class="file-list" id="vault-list">
+                <div style="text-align: center; color: var(--text-muted); padding: 20px;">
+                    Waiting for analysis...
+                </div>
+            </div>
+        </div>
+
         <!-- Live Feed -->
         <div class="card">
             <h2><i class="fas fa-terminal"></i> Live Feed</h2>
@@ -653,6 +684,10 @@
     </aside>
 
     <!-- JARVIS WIDGET -->
+    <button class="jarvis-toggle-btn" onclick="toggleJarvis()" title="Open Jarvis">
+        <i class="fas fa-robot"></i>
+    </button>
+
     <div class="jarvis-widget" id="jarvis-widget">
         <div class="jarvis-header" onclick="toggleJarvis()">
             <span><i class="fas fa-robot"></i> JARVIS</span>
@@ -680,6 +715,7 @@
         document.addEventListener('DOMContentLoaded', () => {
             loadModules();
             startFilePolling();
+            startVaultPolling();
             startSystemMonitor();
 
             // Feed
@@ -951,6 +987,51 @@
             } catch (e) { console.error("Polling error", e); }
         }
 
+        /* --- VAULT POLLING --- */
+        function startVaultPolling() {
+            updateVaultList();
+            setInterval(updateVaultList, 10000);
+        }
+
+        async function updateVaultList() {
+            try {
+                const res = await fetch('/api/vault/reports');
+                const data = await res.json();
+                if (data.success) {
+                    const list = document.getElementById('vault-list');
+                    list.innerHTML = '';
+
+                    if (data.reports.length === 0) {
+                        list.innerHTML = '<div style="padding:10px; color:var(--text-muted); text-align:center;">No vault reports.</div>';
+                        return;
+                    }
+
+                    data.reports.forEach(r => {
+                        const date = new Date(r.timestamp * 1000).toLocaleTimeString();
+                        const highRisk = r.analysis.high_risk_targets ? r.analysis.high_risk_targets.length : 0;
+
+                        const item = document.createElement('div');
+                        item.className = 'file-item';
+                        item.innerHTML = `
+                            <div>
+                                <div style="font-weight:600;">${r.filename}</div>
+                                <div style="font-size:0.75em; color:var(--text-muted);">${date}</div>
+                            </div>
+                            <div class="file-status ${highRisk > 0 ? 'status-failed' : 'status-analyzed'}">
+                                ${highRisk} High Risk
+                            </div>
+                        `;
+                        item.onclick = () => {
+                            // Show details (simple alert for now or modal later)
+                            alert(JSON.stringify(r.analysis, null, 2));
+                        };
+                        item.style.cursor = 'pointer';
+                        list.appendChild(item);
+                    });
+                }
+            } catch (e) { console.error("Vault poll error", e); }
+        }
+
         /* --- LIVE FEED LOGIC --- */
         function logFeed(msg, type = "info") {
             const feed = document.getElementById('live-feed');
@@ -1049,16 +1130,7 @@
         /* --- JARVIS --- */
         function toggleJarvis() {
             const w = document.getElementById('jarvis-widget');
-            w.classList.toggle('collapsed');
-
-            const icon = w.querySelector('.jarvis-header i.fa-chevron-down');
-            if (w.classList.contains('collapsed')) {
-                // icon.classList.replace('fa-chevron-down', 'fa-chevron-up');
-                icon.style.transform = 'rotate(180deg)';
-            } else {
-                // icon.classList.replace('fa-chevron-up', 'fa-chevron-down');
-                icon.style.transform = 'rotate(0deg)';
-            }
+            w.classList.toggle('active');
         }
 
         document.getElementById('jarvis-send').onclick = sendJarvis;
