@@ -1,0 +1,587 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>AI Assistant - AthenaOSINT</title>
+    <script src="https://cdn.socket.io/4.5.4/socket.io.min.js"></script>
+    <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css" rel="stylesheet">
+    <link href="https://fonts.googleapis.com/css2?family=Orbitron:wght@400;700;900&family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+    <style>
+        :root {
+            --bg-primary: #0a0e27;
+            --bg-secondary: #0f1419;
+            --bg-card: rgba(15, 20, 35, 0.95);
+            --primary: #00d9ff;
+            --secondary: #ff006e;
+            --accent: #8338ec;
+            --success: #06ffa5;
+            --warning: #ffbe0b;
+            --danger: #ff006e;
+            --text-primary: #ffffff;
+            --text-secondary: #94a3b8;
+            --border: rgba(0, 217, 255, 0.2);
+        }
+
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: 'Inter', sans-serif;
+            background: var(--bg-primary);
+            color: var(--text-primary);
+            height: 100vh;
+            display: flex;
+            flex-direction: column;
+        }
+
+        .header {
+            padding: 20px 30px;
+            border-bottom: 1px solid var(--border);
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+
+        .page-title {
+            font-family: 'Orbitron', sans-serif;
+            font-size: 24px;
+            font-weight: 900;
+            background: linear-gradient(135deg, var(--primary), var(--accent));
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+            display: flex;
+            align-items: center;
+            gap: 15px;
+        }
+
+        .back-btn {
+            padding: 10px 20px;
+            background: rgba(255, 255, 255, 0.05);
+            border: 1px solid var(--border);
+            border-radius: 10px;
+            color: var(--text-primary);
+            text-decoration: none;
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            transition: all 0.3s;
+        }
+
+        .back-btn:hover {
+            background: rgba(0, 217, 255, 0.1);
+            border-color: var(--primary);
+        }
+
+        .chat-container {
+            flex: 1;
+            display: grid;
+            grid-template-columns: 250px 1fr 300px;
+            overflow: hidden;
+        }
+
+        .sidebar {
+            background: var(--bg-card);
+            border-right: 1px solid var(--border);
+            padding: 20px;
+            overflow-y: auto;
+        }
+
+        .sidebar h3 {
+            font-size: 14px;
+            color: var(--text-secondary);
+            text-transform: uppercase;
+            letter-spacing: 1px;
+            margin-bottom: 15px;
+        }
+
+        .conversation-item {
+            padding: 12px;
+            background: rgba(255, 255, 255, 0.03);
+            border-radius: 8px;
+            margin-bottom: 10px;
+            cursor: pointer;
+            transition: all 0.3s;
+            border: 1px solid transparent;
+        }
+
+        .conversation-item:hover {
+            background: rgba(0, 217, 255, 0.1);
+            border-color: var(--primary);
+        }
+
+        .conversation-item.active {
+            background: rgba(0, 217, 255, 0.15);
+            border-color: var(--primary);
+        }
+
+        .new-chat-btn {
+            width: 100%;
+            padding: 12px;
+            background: linear-gradient(135deg, var(--primary), var(--accent));
+            border: none;
+            border-radius: 10px;
+            color: white;
+            font-weight: 600;
+            cursor: pointer;
+            margin-bottom: 20px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            gap: 8px;
+            transition: all 0.3s;
+        }
+
+        .new-chat-btn:hover {
+            box-shadow: 0 0 20px rgba(0, 217, 255, 0.5);
+            transform: translateY(-2px);
+        }
+
+        .chat-main {
+            display: flex;
+            flex-direction: column;
+            background: var(--bg-secondary);
+        }
+
+        .messages-container {
+            flex: 1;
+            overflow-y: auto;
+            padding: 30px;
+        }
+
+        .message {
+            margin-bottom: 25px;
+            display: flex;
+            gap: 15px;
+            animation: slideIn 0.3s;
+        }
+
+        @keyframes slideIn {
+            from {
+                opacity: 0;
+                transform: translateY(10px);
+            }
+            to {
+                opacity: 1;
+                transform: translateY(0);
+            }
+        }
+
+        .message-avatar {
+            width: 40px;
+            height: 40px;
+            border-radius: 50%;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            flex-shrink: 0;
+        }
+
+        .message.user .message-avatar {
+            background: linear-gradient(135deg, var(--primary), var(--accent));
+        }
+
+        .message.assistant .message-avatar {
+            background: linear-gradient(135deg, var(--accent), var(--secondary));
+        }
+
+        .message-content {
+            flex: 1;
+        }
+
+        .message-header {
+            display: flex;
+            align-items: center;
+            gap: 10px;
+            margin-bottom: 8px;
+        }
+
+        .message-author {
+            font-weight: 600;
+            font-size: 14px;
+        }
+
+        .message-time {
+            font-size: 12px;
+            color: var(--text-secondary);
+        }
+
+        .message-text {
+            background: var(--bg-card);
+            padding: 15px 20px;
+            border-radius: 12px;
+            line-height: 1.6;
+            border: 1px solid var(--border);
+        }
+
+        .message.assistant .message-text {
+            background: rgba(0, 217, 255, 0.05);
+        }
+
+        .input-area {
+            padding: 20px 30px;
+            border-top: 1px solid var(--border);
+            background: var(--bg-card);
+        }
+
+        .input-wrapper {
+            display: flex;
+            gap: 15px;
+            align-items: flex-end;
+        }
+
+        .input-box {
+            flex: 1;
+            position: relative;
+        }
+
+        .input-box textarea {
+            width: 100%;
+            padding: 15px 50px 15px 20px;
+            background: rgba(255, 255, 255, 0.05);
+            border: 1px solid var(--border);
+            border-radius: 12px;
+            color: var(--text-primary);
+            font-family: 'Inter', sans-serif;
+            font-size: 15px;
+            resize: none;
+            min-height: 60px;
+            max-height: 150px;
+        }
+
+        .input-box textarea:focus {
+            outline: none;
+            border-color: var(--primary);
+            box-shadow: 0 0 20px rgba(0, 217, 255, 0.2);
+        }
+
+        .send-btn {
+            width: 50px;
+            height: 50px;
+            border-radius: 12px;
+            background: linear-gradient(135deg, var(--primary), var(--accent));
+            border: none;
+            color: white;
+            cursor: pointer;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            transition: all 0.3s;
+        }
+
+        .send-btn:hover {
+            box-shadow: 0 0 25px rgba(0, 217, 255, 0.5);
+            transform: scale(1.05);
+        }
+
+        .send-btn:disabled {
+            opacity: 0.5;
+            cursor: not-allowed;
+        }
+
+        .right-panel {
+            background: var(--bg-card);
+            border-left: 1px solid var(--border);
+            padding: 20px;
+            overflow-y: auto;
+        }
+
+        .panel-section {
+            margin-bottom: 30px;
+        }
+
+        .panel-section h3 {
+            font-size: 14px;
+            color: var(--text-secondary);
+            text-transform: uppercase;
+            letter-spacing: 1px;
+            margin-bottom: 15px;
+        }
+
+        .suggestion {
+            padding: 12px;
+            background: rgba(0, 217, 255, 0.05);
+            border: 1px solid var(--border);
+            border-radius: 10px;
+            margin-bottom: 10px;
+            cursor: pointer;
+            transition: all 0.3s;
+            font-size: 13px;
+        }
+
+        .suggestion:hover {
+            background: rgba(0, 217, 255, 0.15);
+            border-color: var(--primary);
+            transform: translateX(5px);
+        }
+
+        .capability-tag {
+            display: inline-block;
+            padding: 6px 12px;
+            background: rgba(131, 56, 236, 0.1);
+            border: 1px solid var(--accent);
+            border-radius: 8px;
+            font-size: 11px;
+            margin: 5px;
+        }
+
+        .typing-indicator {
+            display: none;
+            padding: 10px 20px;
+            background: var(--bg-card);
+            border-radius: 12px;
+            width: fit-content;
+        }
+
+        .typing-indicator.active {
+            display: block;
+        }
+
+        .typing-indicator span {
+            display: inline-block;
+            width: 8px;
+            height: 8px;
+            background: var(--primary);
+            border-radius: 50%;
+            margin: 0 3px;
+            animation: bounce 1.4s infinite;
+        }
+
+        .typing-indicator span:nth-child(2) {
+            animation-delay: 0.2s;
+        }
+
+        .typing-indicator span:nth-child(3) {
+            animation-delay: 0.4s;
+        }
+
+        @keyframes bounce {
+            0%, 60%, 100% {
+                transform: translateY(0);
+            }
+            30% {
+                transform: translateY(-10px);
+            }
+        }
+
+        .code-block {
+            background: rgba(0, 0, 0, 0.5);
+            padding: 15px;
+            border-radius: 8px;
+            margin: 10px 0;
+            font-family: 'Courier New', monospace;
+            font-size: 13px;
+            overflow-x: auto;
+        }
+    </style>
+</head>
+<body>
+    <div class="header">
+        <div class="page-title">
+            <i class="fas fa-brain"></i>
+            AI Assistant - JARVIS
+        </div>
+        <a href="/" class="back-btn">
+            <i class="fas fa-arrow-left"></i>
+            Back
+        </a>
+    </div>
+
+    <div class="chat-container">
+        <div class="sidebar">
+            <button class="new-chat-btn" onclick="newChat()">
+                <i class="fas fa-plus"></i>
+                New Conversation
+            </button>
+            <h3>Recent Chats</h3>
+            <div id="conversationsList">
+                <!-- Conversations loaded dynamically -->
+            </div>
+        </div>
+
+        <div class="chat-main">
+            <div class="messages-container" id="messagesContainer">
+                <div class="message assistant">
+                    <div class="message-avatar">
+                        <i class="fas fa-robot"></i>
+                    </div>
+                    <div class="message-content">
+                        <div class="message-header">
+                            <span class="message-author">JARVIS</span>
+                            <span class="message-time">Now</span>
+                        </div>
+                        <div class="message-text">
+                            Hello! I'm JARVIS, your AI-powered OSINT assistant. I can help you analyze data, suggest investigation strategies, correlate findings, and provide insights. How can I assist you today?
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <div class="typing-indicator" id="typingIndicator">
+                <span></span>
+                <span></span>
+                <span></span>
+            </div>
+
+            <div class="input-area">
+                <div class="input-wrapper">
+                    <div class="input-box">
+                        <textarea 
+                            id="messageInput" 
+                            placeholder="Ask me anything about OSINT, data analysis, or investigation strategies..."
+                            rows="1"></textarea>
+                    </div>
+                    <button class="send-btn" id="sendBtn" onclick="sendMessage()">
+                        <i class="fas fa-paper-plane"></i>
+                    </button>
+                </div>
+            </div>
+        </div>
+
+        <div class="right-panel">
+            <div class="panel-section">
+                <h3>Quick Actions</h3>
+                <div class="suggestion" onclick="useSuggestion('Analyze my latest scan results')">
+                    📊 Analyze latest scan
+                </div>
+                <div class="suggestion" onclick="useSuggestion('Suggest modules for investigating a person')">
+                    🔍 Investigation strategy
+                </div>
+                <div class="suggestion" onclick="useSuggestion('Correlate data from multiple sources')">
+                    🔗 Correlate findings
+                </div>
+                <div class="suggestion" onclick="useSuggestion('Generate report from scan data')">
+                    📝 Generate report
+                </div>
+            </div>
+
+            <div class="panel-section">
+                <h3>Capabilities</h3>
+                <div class="capability-tag">Data Analysis</div>
+                <div class="capability-tag">Pattern Recognition</div>
+                <div class="capability-tag">OSINT Strategy</div>
+                <div class="capability-tag">Report Generation</div>
+                <div class="capability-tag">Entity Resolution</div>
+                <div class="capability-tag">Correlation</div>
+            </div>
+
+            <div class="panel-section">
+                <h3>Model Info</h3>
+                <p style="font-size: 13px; color: var(--text-secondary);">
+                    <strong>Model:</strong> GPT-4<br>
+                    <strong>Context:</strong> 8K tokens<br>
+                    <strong>Status:</strong> <span style="color: var(--success);">Online</span>
+                </p>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        let currentConversation = [];
+        
+        document.getElementById('messageInput').addEventListener('keydown', (e) => {
+            if (e.key === 'Enter' && !e.shiftKey) {
+                e.preventDefault();
+                sendMessage();
+            }
+        });
+
+        async function sendMessage() {
+            const input = document.getElementById('messageInput');
+            const message = input.value.trim();
+            
+            if (!message) return;
+
+            // Add user message to chat
+            addMessage('user', message);
+            input.value = '';
+
+            // Show typing indicator
+            document.getElementById('typingIndicator').classList.add('active');
+
+            try {
+                const response = await fetch('/api/ai/chat', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ message, conversation: currentConversation })
+                });
+
+                const data = await response.json();
+                
+                // Hide typing indicator
+                document.getElementById('typingIndicator').classList.remove('active');
+
+                if (data.success) {
+                    addMessage('assistant', data.response);
+                    currentConversation.push({ role: 'user', content: message });
+                    currentConversation.push({ role: 'assistant', content: data.response });
+                } else {
+                    addMessage('assistant', 'Sorry, I encountered an error. Please try again.');
+                }
+            } catch (error) {
+                document.getElementById('typingIndicator').classList.remove('active');
+                addMessage('assistant', 'Connection error. Please check your internet connection.');
+            }
+        }
+
+        function addMessage(role, text) {
+            const container = document.getElementById('messagesContainer');
+            const time = new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
+            
+            const messageDiv = document.createElement('div');
+            messageDiv.className = `message ${role}`;
+            messageDiv.innerHTML = `
+                <div class="message-avatar">
+                    <i class="fas fa-${role === 'user' ? 'user' : 'robot'}"></i>
+                </div>
+                <div class="message-content">
+                    <div class="message-header">
+                        <span class="message-author">${role === 'user' ? 'You' : 'JARVIS'}</span>
+                        <span class="message-time">${time}</span>
+                    </div>
+                    <div class="message-text">${formatMessage(text)}</div>
+                </div>
+            `;
+            
+            container.appendChild(messageDiv);
+            container.scrollTop = container.scrollHeight;
+        }
+
+        function formatMessage(text) {
+            // Simple markdown-like formatting
+            text = text.replace(/```([\s\S]*?)```/g, '<div class="code-block">$1</div>');
+            text = text.replace(/\*\*(.*?)\*\*/g, '<strong>$1</strong>');
+            text = text.replace(/\*(.*?)\*/g, '<em>$1</em>');
+            return text;
+        }
+
+        function useSuggestion(text) {
+            document.getElementById('messageInput').value = text;
+            document.getElementById('messageInput').focus();
+        }
+
+        function newChat() {
+            currentConversation = [];
+            document.getElementById('messagesContainer').innerHTML = `
+                <div class="message assistant">
+                    <div class="message-avatar">
+                        <i class="fas fa-robot"></i>
+                    </div>
+                    <div class="message-content">
+                        <div class="message-header">
+                            <span class="message-author">JARVIS</span>
+                            <span class="message-time">Now</span>
+                        </div>
+                        <div class="message-text">
+                            Hello! I'm JARVIS, your AI-powered OSINT assistant. I can help you analyze data, suggest investigation strategies, correlate findings, and provide insights. How can I assist you today?
+                        </div>
+                    </div>
+                </div>
+            `;
+        }
+    </script>
+</body>
+</html>

@@ -1,0 +1,639 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Custom Scripts - AthenaOSINT</title>
+    <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css" rel="stylesheet">
+    <link href="https://fonts.googleapis.com/css2?family=Orbitron:wght@400;700;900&family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/codemirror/5.65.2/codemirror.min.css">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/codemirror/5.65.2/theme/dracula.min.css">
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/codemirror/5.65.2/codemirror.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/codemirror/5.65.2/mode/python/python.min.js"></script>
+    <style>
+        :root {
+            --bg-primary: #0a0e27;
+            --bg-secondary: #0f1419;
+            --bg-card: rgba(15, 20, 35, 0.95);
+            --primary: #00d9ff;
+            --secondary: #ff006e;
+            --accent: #8338ec;
+            --success: #06ffa5;
+            --warning: #ffbe0b;
+            --danger: #ff006e;
+            --text-primary: #ffffff;
+            --text-secondary: #94a3b8;
+            --border: rgba(0, 217, 255, 0.2);
+        }
+
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: 'Inter', sans-serif;
+            background: var(--bg-primary);
+            color: var(--text-primary);
+            height: 100vh;
+            display: flex;
+            flex-direction: column;
+        }
+
+        .header {
+            padding: 20px 30px;
+            border-bottom: 1px solid var(--border);
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+
+        .page-title {
+            font-family: 'Orbitron', sans-serif;
+            font-size: 24px;
+            font-weight: 900;
+            background: linear-gradient(135deg, var(--primary), var(--accent));
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+            display: flex;
+            align-items: center;
+            gap: 15px;
+        }
+
+        .header-actions {
+            display: flex;
+            gap: 10px;
+        }
+
+        .back-btn, .action-btn {
+            padding: 10px 20px;
+            border-radius: 10px;
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            transition: all 0.3s;
+            cursor: pointer;
+            font-size: 14px;
+            font-weight: 600;
+        }
+
+        .back-btn {
+            background: rgba(255, 255, 255, 0.05);
+            border: 1px solid var(--border);
+            color: var(--text-primary);
+            text-decoration: none;
+        }
+
+        .back-btn:hover {
+            background: rgba(0, 217, 255, 0.1);
+            border-color: var(--primary);
+        }
+
+        .action-btn {
+            background: linear-gradient(135deg, var(--primary), var(--accent));
+            border: none;
+            color: white;
+        }
+
+        .action-btn:hover {
+            box-shadow: 0 0 20px rgba(0, 217, 255, 0.5);
+        }
+
+        .main-container {
+            flex: 1;
+            display: grid;
+            grid-template-columns: 280px 1fr 350px;
+            overflow: hidden;
+        }
+
+        .scripts-sidebar {
+            background: var(--bg-card);
+            border-right: 1px solid var(--border);
+            overflow-y: auto;
+            padding: 20px;
+        }
+
+        .sidebar-section {
+            margin-bottom: 30px;
+        }
+
+        .sidebar-title {
+            font-size: 12px;
+            color: var(--text-secondary);
+            text-transform: uppercase;
+            letter-spacing: 1px;
+            margin-bottom: 15px;
+            display: flex;
+            align-items: center;
+            gap: 8px;
+        }
+
+        .script-item {
+            padding: 12px;
+            background: rgba(255, 255, 255, 0.03);
+            border: 1px solid var(--border);
+            border-radius: 10px;
+            margin-bottom: 10px;
+            cursor: pointer;
+            transition: all 0.3s;
+        }
+
+        .script-item:hover, .script-item.active {
+            background: rgba(0, 217, 255, 0.1);
+            border-color: var(--primary);
+        }
+
+        .script-name {
+            font-weight: 600;
+            margin-bottom: 5px;
+            display: flex;
+            align-items: center;
+            gap: 8px;
+        }
+
+        .script-meta {
+            font-size: 11px;
+            color: var(--text-secondary);
+        }
+
+        .editor-area {
+            background: var(--bg-secondary);
+            display: flex;
+            flex-direction: column;
+        }
+
+        .editor-toolbar {
+            padding: 15px 20px;
+            border-bottom: 1px solid var(--border);
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+
+        .editor-title {
+            font-size: 16px;
+            font-weight: 600;
+        }
+
+        .toolbar-actions {
+            display: flex;
+            gap: 10px;
+        }
+
+        .toolbar-btn {
+            padding: 8px 16px;
+            background: rgba(255, 255, 255, 0.05);
+            border: 1px solid var(--border);
+            border-radius: 8px;
+            color: var(--text-primary);
+            cursor: pointer;
+            transition: all 0.3s;
+            font-size: 13px;
+        }
+
+        .toolbar-btn:hover {
+            background: rgba(0, 217, 255, 0.1);
+            border-color: var(--primary);
+        }
+
+        .toolbar-btn.primary {
+            background: linear-gradient(135deg, var(--primary), var(--accent));
+            border: none;
+        }
+
+        .CodeMirror {
+            height: 100% !important;
+            font-size: 14px;
+            font-family: 'Courier New', monospace;
+        }
+
+        .right-panel {
+            background: var(--bg-card);
+            border-left: 1px solid var(--border);
+            overflow-y: auto;
+            padding: 20px;
+        }
+
+        .panel-section {
+            margin-bottom: 25px;
+        }
+
+        .panel-title {
+            font-size: 14px;
+            font-weight: 600;
+            margin-bottom: 15px;
+            color: var(--primary);
+        }
+
+        .output-console {
+            background: rgba(0, 0, 0, 0.5);
+            border: 1px solid var(--border);
+            border-radius: 10px;
+            padding: 15px;
+            font-family: 'Courier New', monospace;
+            font-size: 12px;
+            max-height: 300px;
+            overflow-y: auto;
+        }
+
+        .output-line {
+            margin-bottom: 5px;
+            color: var(--text-secondary);
+        }
+
+        .output-line.success { color: var(--success); }
+        .output-line.error { color: var(--danger); }
+        .output-line.warning { color: var(--warning); }
+
+        .script-info-group {
+            margin-bottom: 15px;
+        }
+
+        .info-label {
+            font-size: 12px;
+            color: var(--text-secondary);
+            margin-bottom: 5px;
+        }
+
+        .info-value {
+            font-size: 14px;
+            padding: 8px 12px;
+            background: rgba(255, 255, 255, 0.05);
+            border-radius: 8px;
+        }
+
+        .template-btn {
+            width: 100%;
+            padding: 10px;
+            background: rgba(0, 217, 255, 0.1);
+            border: 1px solid var(--primary);
+            border-radius: 8px;
+            color: var(--text-primary);
+            cursor: pointer;
+            transition: all 0.3s;
+            margin-bottom: 10px;
+            text-align: left;
+        }
+
+        .template-btn:hover {
+            background: rgba(0, 217, 255, 0.2);
+        }
+
+        .param-input {
+            width: 100%;
+            padding: 10px;
+            background: rgba(255, 255, 255, 0.05);
+            border: 1px solid var(--border);
+            border-radius: 8px;
+            color: var(--text-primary);
+            font-size: 13px;
+            margin-bottom: 10px;
+        }
+
+        .param-input:focus {
+            outline: none;
+            border-color: var(--primary);
+        }
+    </style>
+</head>
+<body>
+    <div class="header">
+        <div class="page-title">
+            <i class="fas fa-code"></i>
+            Custom Scripts
+        </div>
+        <div class="header-actions">
+            <a href="/" class="back-btn">
+                <i class="fas fa-arrow-left"></i>
+                Back
+            </a>
+            <button class="action-btn" onclick="newScript()">
+                <i class="fas fa-plus"></i>
+                New Script
+            </button>
+        </div>
+    </div>
+
+    <div class="main-container">
+        <div class="scripts-sidebar">
+            <div class="sidebar-section">
+                <div class="sidebar-title">
+                    <i class="fas fa-folder"></i>
+                    Your Scripts
+                </div>
+                <div id="userScripts">
+                    <!-- Scripts loaded dynamically -->
+                </div>
+            </div>
+
+            <div class="sidebar-section">
+                <div class="sidebar-title">
+                    <i class="fas fa-star"></i>
+                    Examples
+                </div>
+                <div id="exampleScripts">
+                    <div class="script-item" onclick="loadExample('domain_enum')">
+                        <div class="script-name">
+                            <i class="fas fa-globe"></i>
+                            Domain Enumeration
+                        </div>
+                        <div class="script-meta">Subdomain discovery</div>
+                    </div>
+                    <div class="script-item" onclick="loadExample('email_finder')">
+                        <div class="script-name">
+                            <i class="fas fa-envelope"></i>
+                            Email Finder
+                        </div>
+                        <div class="script-meta">Find emails from domain</div>
+                    </div>
+                    <div class="script-item" onclick="loadExample('social_osint')">
+                        <div class="script-name">
+                            <i class="fas fa-users"></i>
+                            Social OSINT
+                        </div>
+                        <div class="script-meta">Social media recon</div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <div class="editor-area">
+            <div class="editor-toolbar">
+                <div class="editor-title" id="scriptTitle">New Script</div>
+                <div class="toolbar-actions">
+                    <button class="toolbar-btn" onclick="saveScript()">
+                        <i class="fas fa-save"></i> Save
+                    </button>
+                    <button class="toolbar-btn primary" onclick="runScript()">
+                        <i class="fas fa-play"></i> Run
+                    </button>
+                </div>
+            </div>
+            <div id="editorContainer"></div>
+        </div>
+
+        <div class="right-panel">
+            <div class="panel-section">
+                <div class="panel-title">⚙️ Script Info</div>
+                <div class="script-info-group">
+                    <div class="info-label">Name</div>
+                    <input type="text" class="param-input" id="scriptName" placeholder="my_script.py">
+                </div>
+                <div class="script-info-group">
+                    <div class="info-label">Description</div>
+                    <input type="text" class="param-input" id="scriptDesc" placeholder="What does this do?">
+                </div>
+            </div>
+
+            <div class="panel-section">
+                <div class="panel-title">📦 Quick Templates</div>
+                <button class="template-btn" onclick="loadTemplate('basic')">
+                    <strong>Basic OSINT Script</strong><br>
+                    <small>Simple module template</small>
+                </button>
+                <button class="template-btn" onclick="loadTemplate('api')">
+                    <strong>API Integration</strong><br>
+                    <small>Work with external APIs</small>
+                </button>
+                <button class="template-btn" onclick="loadTemplate('scraper')">
+                    <strong>Web Scraper</strong><br>
+                    <small>Extract data from websites</small>
+                </button>
+            </div>
+
+            <div class="panel-section">
+                <div class="panel-title">📊 Output Console</div>
+                <div class="output-console" id="outputConsole">
+                    <div class="output-line">Ready to execute...</div>
+                </div>
+            </div>
+
+            <div class="panel-section">
+                <div class="panel-title">🔧 Parameters</div>
+                <input type="text" class="param-input" id="param1" placeholder="target (e.g., example.com)">
+                <input type="text" class="param-input" id="param2" placeholder="depth (e.g., 2)">
+            </div>
+        </div>
+    </div>
+
+    <script>
+        let editor;
+        let currentScript = null;
+
+        document.addEventListener('DOMContentLoaded', () => {
+            initEditor();
+            loadUserScripts();
+        });
+
+        function initEditor() {
+            editor = CodeMirror(document.getElementById('editorContainer'), {
+                mode: 'python',
+                theme: 'dracula',
+                lineNumbers: true,
+                autoCloseBrackets: true,
+                matchBrackets: true,
+                indentUnit: 4,
+                tabSize: 4,
+                lineWrapping: true,
+                value: '# Welcome to AthenaOSINT Custom Scripts\n# Write your custom OSINT modules here\n\nimport sys\n\ndef main(target):\n    """Your custom OSINT logic"""\n    print(f"Analyzing target: {target}")\n    \n    # Your code here\n    results = []\n    \n    return results\n\nif __name__ == "__main__":\n    target = sys.argv[1] if len(sys.argv) > 1 else "example.com"\n    results = main(target)\n    print(f"Found {len(results)} results")\n'
+            });
+        }
+
+        async function loadUserScripts() {
+            try {
+                const response = await fetch('/api/scripts/custom');
+                const data = await response.json();
+                
+                if (data.success && data.scripts) {
+                    const container = document.getElementById('userScripts');
+                    container.innerHTML = data.scripts.map(script => `
+                        <div class="script-item" onclick="loadScript('${script.id}')">
+                            <div class="script-name">
+                                <i class="fas fa-file-code"></i>
+                                ${script.name}
+                            </div>
+                            <div class="script-meta">Modified ${script.modified}</div>
+                        </div>
+                    `).join('');
+                } else {
+                    document.getElementById('userScripts').innerHTML = `
+                        <div style="text-align: center; padding: 20px; color: var(--text-secondary); font-size: 12px;">
+                            No scripts yet<br>Create your first!
+                        </div>
+                    `;
+                }
+            } catch (error) {
+                console.error('Failed to load scripts:', error);
+            }
+        }
+
+        async function saveScript() {
+            const name = document.getElementById('scriptName').value || 'untitled.py';
+            const description = document.getElementById('scriptDesc').value;
+            const code = editor.getValue();
+
+            try {
+                const response = await fetch('/api/scripts/custom', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ name, description, code })
+                });
+
+                const data = await response.json();
+                
+                if (data.success) {
+                    addOutput('✓ Script saved successfully', 'success');
+                    loadUserScripts();
+                } else {
+                    addOutput('✗ Failed to save script', 'error');
+                }
+            } catch (error) {
+                addOutput('✗ Error saving script', 'error');
+            }
+        }
+
+        async function runScript() {
+            const code = editor.getValue();
+            const target = document.getElementById('param1').value;
+            const depth = document.getElementById('param2').value;
+
+            addOutput('▶ Executing script...', 'warning');
+
+            try {
+                const response = await fetch('/api/scripts/execute', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ code, params: { target, depth } })
+                });
+
+                const data = await response.json();
+                
+                if (data.success) {
+                    addOutput('✓ Execution complete', 'success');
+                    if (data.output) {
+                        data.output.split('\n').forEach(line => {
+                            if (line.trim()) addOutput(line);
+                        });
+                    }
+                } else {
+                    addOutput('✗ Execution failed: ' + data.error, 'error');
+                }
+            } catch (error) {
+                addOutput('✗ Error executing script', 'error');
+            }
+        }
+
+        function addOutput(text, type = '') {
+            const console = document.getElementById('outputConsole');
+            const line = document.createElement('div');
+            line.className = 'output-line ' + type;
+            line.textContent = text;
+            console.appendChild(line);
+            console.scrollTop = console.scrollHeight;
+        }
+
+        function loadTemplate(type) {
+            const templates = {
+                basic: `# Basic OSINT Module Template
+import requests
+
+def investigate(target):
+    """
+    Basic OSINT investigation template
+    """
+    print(f"Investigating: {target}")
+    
+    results = {
+        'target': target,
+        'findings': []
+    }
+    
+    # Add your investigation logic here
+    
+    return results
+
+if __name__ == "__main__":
+    import sys
+    target = sys.argv[1] if len(sys.argv) > 1 else "example.com"
+    results = investigate(target)
+    print(results)`,
+
+                api: `# API Integration Template
+import requests
+import os
+
+API_KEY = os.getenv('API_KEY', '')
+
+def fetch_data(target):
+    """
+    Fetch data from external API
+    """
+    url = f"https://api.example.com/v1/search"
+    params = {
+        'query': target,
+        'api_key': API_KEY
+    }
+    
+    try:
+        response = requests.get(url, params=params)
+        response.raise_for_status()
+        return response.json()
+    except Exception as e:
+        print(f"Error: {e}")
+        return None
+
+if __name__ == "__main__":
+    import sys
+    target = sys.argv[1] if len(sys.argv) > 1 else "example.com"
+    data = fetch_data(target)
+    print(data)`,
+
+                scraper: `# Web Scraper Template
+from bs4 import BeautifulSoup
+import requests
+
+def scrape_website(url):
+    """
+    Extract data from website
+    """
+    try:
+        response = requests.get(url, timeout=10)
+        soup = BeautifulSoup(response.content, 'html.parser')
+        
+        results = {
+            'title': soup.find('title').text if soup.find('title') else None,
+            'links': [a['href'] for a in soup.find_all('a', href=True)],
+            'images': [img['src'] for img in soup.find_all('img', src=True)]
+        }
+        
+        return results
+    except Exception as e:
+        print(f"Scraping error: {e}")
+        return None
+
+if __name__ == "__main__":
+    import sys
+    url = sys.argv[1] if len(sys.argv) > 1 else "https://example.com"
+    data = scrape_website(url)
+    print(data)`
+            };
+
+            editor.setValue(templates[type]);
+            addOutput(`Loaded ${type} template`, 'success');
+        }
+
+        function loadExample(name) {
+            // Load example scripts
+            addOutput(`Loading example: ${name}`, 'success');
+        }
+
+        function newScript() {
+            editor.setValue('# New Script\n\nimport sys\n\ndef main():\n    pass\n\nif __name__ == "__main__":\n    main()\n');
+            document.getElementById('scriptName').value = '';
+            document.getElementById('scriptDesc').value = '';
+            document.getElementById('scriptTitle').textContent = 'New Script';
+        }
+    </script>
+</body>
+</html>

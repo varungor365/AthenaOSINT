@@ -1,0 +1,723 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Export Data - AthenaOSINT</title>
+    <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css" rel="stylesheet">
+    <link href="https://fonts.googleapis.com/css2?family=Orbitron:wght@400;700;900&family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+    <style>
+        :root {
+            --bg-primary: #0a0e27;
+            --bg-secondary: #0f1419;
+            --bg-card: rgba(15, 20, 35, 0.95);
+            --primary: #00d9ff;
+            --secondary: #ff006e;
+            --accent: #8338ec;
+            --success: #06ffa5;
+            --warning: #ffbe0b;
+            --danger: #ff006e;
+            --text-primary: #ffffff;
+            --text-secondary: #94a3b8;
+            --border: rgba(0, 217, 255, 0.2);
+        }
+
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: 'Inter', sans-serif;
+            background: var(--bg-primary);
+            color: var(--text-primary);
+            min-height: 100vh;
+        }
+
+        .container {
+            max-width: 1400px;
+            margin: 0 auto;
+            padding: 30px;
+        }
+
+        .header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 40px;
+            padding-bottom: 20px;
+            border-bottom: 1px solid var(--border);
+        }
+
+        .page-title {
+            font-family: 'Orbitron', sans-serif;
+            font-size: 32px;
+            font-weight: 900;
+            background: linear-gradient(135deg, var(--primary), var(--accent));
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+            display: flex;
+            align-items: center;
+            gap: 15px;
+        }
+
+        .back-btn {
+            padding: 12px 24px;
+            background: rgba(255, 255, 255, 0.05);
+            border: 1px solid var(--border);
+            border-radius: 10px;
+            color: var(--text-primary);
+            text-decoration: none;
+            display: flex;
+            align-items: center;
+            gap: 10px;
+            transition: all 0.3s;
+        }
+
+        .back-btn:hover {
+            background: rgba(0, 217, 255, 0.1);
+            border-color: var(--primary);
+        }
+
+        .export-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(350px, 1fr));
+            gap: 25px;
+            margin-bottom: 40px;
+        }
+
+        .export-card {
+            background: var(--bg-card);
+            border: 1px solid var(--border);
+            border-radius: 15px;
+            padding: 30px;
+            transition: all 0.3s;
+            cursor: pointer;
+            position: relative;
+            overflow: hidden;
+        }
+
+        .export-card::before {
+            content: '';
+            position: absolute;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 4px;
+            background: linear-gradient(90deg, var(--primary), var(--accent));
+            opacity: 0;
+            transition: opacity 0.3s;
+        }
+
+        .export-card:hover {
+            transform: translateY(-5px);
+            border-color: var(--primary);
+            box-shadow: 0 10px 40px rgba(0, 217, 255, 0.3);
+        }
+
+        .export-card:hover::before {
+            opacity: 1;
+        }
+
+        .export-header {
+            display: flex;
+            align-items: center;
+            gap: 15px;
+            margin-bottom: 20px;
+        }
+
+        .export-icon {
+            width: 60px;
+            height: 60px;
+            border-radius: 12px;
+            background: rgba(0, 217, 255, 0.1);
+            border: 1px solid var(--primary);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 28px;
+        }
+
+        .export-info h3 {
+            font-size: 20px;
+            margin-bottom: 5px;
+        }
+
+        .export-format {
+            font-size: 12px;
+            color: var(--text-secondary);
+            text-transform: uppercase;
+            letter-spacing: 1px;
+        }
+
+        .export-description {
+            color: var(--text-secondary);
+            line-height: 1.6;
+            margin-bottom: 20px;
+            font-size: 14px;
+        }
+
+        .export-options {
+            display: flex;
+            flex-direction: column;
+            gap: 10px;
+            margin-bottom: 20px;
+        }
+
+        .option-checkbox {
+            display: flex;
+            align-items: center;
+            gap: 10px;
+            padding: 10px;
+            background: rgba(255, 255, 255, 0.02);
+            border-radius: 8px;
+            font-size: 13px;
+        }
+
+        .option-checkbox input[type="checkbox"] {
+            width: 18px;
+            height: 18px;
+            cursor: pointer;
+        }
+
+        .export-btn {
+            width: 100%;
+            padding: 14px;
+            background: linear-gradient(135deg, var(--primary), var(--accent));
+            border: none;
+            border-radius: 10px;
+            color: white;
+            font-weight: 600;
+            cursor: pointer;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            gap: 10px;
+            transition: all 0.3s;
+        }
+
+        .export-btn:hover {
+            box-shadow: 0 0 25px rgba(0, 217, 255, 0.5);
+            transform: translateY(-2px);
+        }
+
+        .recent-exports {
+            background: var(--bg-card);
+            border: 1px solid var(--border);
+            border-radius: 15px;
+            padding: 30px;
+        }
+
+        .section-title {
+            font-size: 20px;
+            font-weight: 700;
+            margin-bottom: 20px;
+            display: flex;
+            align-items: center;
+            gap: 10px;
+        }
+
+        .export-history {
+            display: flex;
+            flex-direction: column;
+            gap: 15px;
+        }
+
+        .history-item {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            padding: 15px;
+            background: rgba(255, 255, 255, 0.02);
+            border: 1px solid var(--border);
+            border-radius: 10px;
+            transition: all 0.3s;
+        }
+
+        .history-item:hover {
+            background: rgba(0, 217, 255, 0.05);
+            border-color: var(--primary);
+        }
+
+        .history-info {
+            flex: 1;
+        }
+
+        .history-name {
+            font-weight: 600;
+            margin-bottom: 5px;
+        }
+
+        .history-meta {
+            font-size: 12px;
+            color: var(--text-secondary);
+            display: flex;
+            gap: 15px;
+        }
+
+        .download-btn {
+            padding: 10px 20px;
+            background: rgba(0, 217, 255, 0.1);
+            border: 1px solid var(--primary);
+            border-radius: 8px;
+            color: var(--text-primary);
+            cursor: pointer;
+            transition: all 0.3s;
+            display: flex;
+            align-items: center;
+            gap: 8px;
+        }
+
+        .download-btn:hover {
+            background: var(--primary);
+            color: var(--bg-primary);
+        }
+
+        .stats-bar {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
+            gap: 20px;
+            margin-bottom: 40px;
+        }
+
+        .stat-box {
+            background: var(--bg-card);
+            border: 1px solid var(--border);
+            border-radius: 12px;
+            padding: 20px;
+            text-align: center;
+        }
+
+        .stat-value {
+            font-size: 32px;
+            font-weight: 700;
+            background: linear-gradient(135deg, var(--primary), white);
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+        }
+
+        .stat-label {
+            font-size: 12px;
+            color: var(--text-secondary);
+            margin-top: 5px;
+        }
+
+        .bulk-export {
+            background: var(--bg-card);
+            border: 1px solid var(--border);
+            border-radius: 15px;
+            padding: 30px;
+            margin-bottom: 30px;
+        }
+
+        .bulk-options {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+            gap: 15px;
+            margin: 20px 0;
+        }
+
+        .date-input {
+            padding: 12px;
+            background: rgba(255, 255, 255, 0.05);
+            border: 1px solid var(--border);
+            border-radius: 10px;
+            color: var(--text-primary);
+            font-size: 14px;
+        }
+
+        .date-input:focus {
+            outline: none;
+            border-color: var(--primary);
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <div class="header">
+            <div class="page-title">
+                <i class="fas fa-download"></i>
+                Export Data
+            </div>
+            <a href="/" class="back-btn">
+                <i class="fas fa-arrow-left"></i>
+                Back to Dashboard
+            </a>
+        </div>
+
+        <div class="stats-bar">
+            <div class="stat-box">
+                <div class="stat-value" id="totalScans">0</div>
+                <div class="stat-label">Total Scans</div>
+            </div>
+            <div class="stat-box">
+                <div class="stat-value" id="totalFindings">0</div>
+                <div class="stat-label">Total Findings</div>
+            </div>
+            <div class="stat-box">
+                <div class="stat-value" id="totalExports">0</div>
+                <div class="stat-label">Exports Generated</div>
+            </div>
+            <div class="stat-box">
+                <div class="stat-value" id="totalSize">0 MB</div>
+                <div class="stat-label">Total Data Size</div>
+            </div>
+        </div>
+
+        <div class="bulk-export">
+            <div class="section-title">
+                <i class="fas fa-layer-group"></i>
+                Bulk Export
+            </div>
+            <div class="bulk-options">
+                <div>
+                    <label style="display: block; margin-bottom: 8px; font-size: 13px; color: var(--text-secondary);">From Date</label>
+                    <input type="date" class="date-input" id="fromDate">
+                </div>
+                <div>
+                    <label style="display: block; margin-bottom: 8px; font-size: 13px; color: var(--text-secondary);">To Date</label>
+                    <input type="date" class="date-input" id="toDate">
+                </div>
+                <div>
+                    <label style="display: block; margin-bottom: 8px; font-size: 13px; color: var(--text-secondary);">Format</label>
+                    <select class="date-input" id="bulkFormat">
+                        <option value="json">JSON</option>
+                        <option value="csv">CSV</option>
+                        <option value="pdf">PDF Report</option>
+                        <option value="html">HTML Report</option>
+                    </select>
+                </div>
+                <div style="display: flex; align-items: flex-end;">
+                    <button class="export-btn" onclick="exportBulk()">
+                        <i class="fas fa-file-archive"></i>
+                        Export All
+                    </button>
+                </div>
+            </div>
+        </div>
+
+        <div class="export-grid">
+            <div class="export-card">
+                <div class="export-header">
+                    <div class="export-icon">📊</div>
+                    <div class="export-info">
+                        <h3>JSON Export</h3>
+                        <div class="export-format">application/json</div>
+                    </div>
+                </div>
+                <div class="export-description">
+                    Export all scan data in structured JSON format. Perfect for programmatic access and integration with other tools.
+                </div>
+                <div class="export-options">
+                    <label class="option-checkbox">
+                        <input type="checkbox" checked>
+                        <span>Include scan metadata</span>
+                    </label>
+                    <label class="option-checkbox">
+                        <input type="checkbox" checked>
+                        <span>Include raw results</span>
+                    </label>
+                    <label class="option-checkbox">
+                        <input type="checkbox">
+                        <span>Pretty print (formatted)</span>
+                    </label>
+                </div>
+                <button class="export-btn" onclick="exportData('json')">
+                    <i class="fas fa-file-code"></i>
+                    Export as JSON
+                </button>
+            </div>
+
+            <div class="export-card">
+                <div class="export-header">
+                    <div class="export-icon">📄</div>
+                    <div class="export-info">
+                        <h3>CSV Export</h3>
+                        <div class="export-format">text/csv</div>
+                    </div>
+                </div>
+                <div class="export-description">
+                    Export data in CSV format for easy analysis in spreadsheet applications like Excel or Google Sheets.
+                </div>
+                <div class="export-options">
+                    <label class="option-checkbox">
+                        <input type="checkbox" checked>
+                        <span>Include headers</span>
+                    </label>
+                    <label class="option-checkbox">
+                        <input type="checkbox" checked>
+                        <span>Flatten nested data</span>
+                    </label>
+                    <label class="option-checkbox">
+                        <input type="checkbox">
+                        <span>Separate files per module</span>
+                    </label>
+                </div>
+                <button class="export-btn" onclick="exportData('csv')">
+                    <i class="fas fa-table"></i>
+                    Export as CSV
+                </button>
+            </div>
+
+            <div class="export-card">
+                <div class="export-header">
+                    <div class="export-icon">📑</div>
+                    <div class="export-info">
+                        <h3>PDF Report</h3>
+                        <div class="export-format">application/pdf</div>
+                    </div>
+                </div>
+                <div class="export-description">
+                    Generate professional PDF report with visualizations, charts, and detailed findings ready for presentation.
+                </div>
+                <div class="export-options">
+                    <label class="option-checkbox">
+                        <input type="checkbox" checked>
+                        <span>Include charts & graphs</span>
+                    </label>
+                    <label class="option-checkbox">
+                        <input type="checkbox" checked>
+                        <span>Executive summary</span>
+                    </label>
+                    <label class="option-checkbox">
+                        <input type="checkbox">
+                        <span>Detailed findings</span>
+                    </label>
+                </div>
+                <button class="export-btn" onclick="exportData('pdf')">
+                    <i class="fas fa-file-pdf"></i>
+                    Export as PDF
+                </button>
+            </div>
+
+            <div class="export-card">
+                <div class="export-header">
+                    <div class="export-icon">🌐</div>
+                    <div class="export-info">
+                        <h3>HTML Report</h3>
+                        <div class="export-format">text/html</div>
+                    </div>
+                </div>
+                <div class="export-description">
+                    Interactive HTML report with searchable data, interactive charts, and beautiful formatting.
+                </div>
+                <div class="export-options">
+                    <label class="option-checkbox">
+                        <input type="checkbox" checked>
+                        <span>Interactive charts</span>
+                    </label>
+                    <label class="option-checkbox">
+                        <input type="checkbox" checked>
+                        <span>Searchable tables</span>
+                    </label>
+                    <label class="option-checkbox">
+                        <input type="checkbox">
+                        <span>Dark theme</span>
+                    </label>
+                </div>
+                <button class="export-btn" onclick="exportData('html')">
+                    <i class="fas fa-file-code"></i>
+                    Export as HTML
+                </button>
+            </div>
+
+            <div class="export-card">
+                <div class="export-header">
+                    <div class="export-icon">🗃️</div>
+                    <div class="export-info">
+                        <h3>XML Export</h3>
+                        <div class="export-format">application/xml</div>
+                    </div>
+                </div>
+                <div class="export-description">
+                    Export in XML format for compatibility with various security and analysis tools.
+                </div>
+                <div class="export-options">
+                    <label class="option-checkbox">
+                        <input type="checkbox" checked>
+                        <span>Include schema</span>
+                    </label>
+                    <label class="option-checkbox">
+                        <input type="checkbox">
+                        <span>Validate output</span>
+                    </label>
+                </div>
+                <button class="export-btn" onclick="exportData('xml')">
+                    <i class="fas fa-code"></i>
+                    Export as XML
+                </button>
+            </div>
+
+            <div class="export-card">
+                <div class="export-header">
+                    <div class="export-icon">📦</div>
+                    <div class="export-info">
+                        <h3>Archive Package</h3>
+                        <div class="export-format">application/zip</div>
+                    </div>
+                </div>
+                <div class="export-description">
+                    Complete data package with all formats, attachments, and screenshots in a single ZIP archive.
+                </div>
+                <div class="export-options">
+                    <label class="option-checkbox">
+                        <input type="checkbox" checked>
+                        <span>All data formats</span>
+                    </label>
+                    <label class="option-checkbox">
+                        <input type="checkbox" checked>
+                        <span>Include screenshots</span>
+                    </label>
+                    <label class="option-checkbox">
+                        <input type="checkbox">
+                        <span>Compress data</span>
+                    </label>
+                </div>
+                <button class="export-btn" onclick="exportData('archive')">
+                    <i class="fas fa-file-archive"></i>
+                    Export Archive
+                </button>
+            </div>
+        </div>
+
+        <div class="recent-exports">
+            <div class="section-title">
+                <i class="fas fa-history"></i>
+                Recent Exports
+            </div>
+            <div class="export-history" id="exportHistory">
+                <!-- Recent exports loaded dynamically -->
+            </div>
+        </div>
+    </div>
+
+    <script>
+        document.addEventListener('DOMContentLoaded', () => {
+            loadStats();
+            loadRecentExports();
+            setDefaultDates();
+        });
+
+        function setDefaultDates() {
+            const today = new Date();
+            const monthAgo = new Date(today.getTime() - 30 * 24 * 60 * 60 * 1000);
+            
+            document.getElementById('fromDate').value = monthAgo.toISOString().split('T')[0];
+            document.getElementById('toDate').value = today.toISOString().split('T')[0];
+        }
+
+        async function loadStats() {
+            try {
+                const response = await fetch('/api/stats/export');
+                const data = await response.json();
+                
+                if (data.success) {
+                    document.getElementById('totalScans').textContent = data.total_scans || 0;
+                    document.getElementById('totalFindings').textContent = data.total_findings || 0;
+                    document.getElementById('totalExports').textContent = data.total_exports || 0;
+                    document.getElementById('totalSize').textContent = (data.total_size_mb || 0) + ' MB';
+                }
+            } catch (error) {
+                console.error('Failed to load stats:', error);
+            }
+        }
+
+        async function loadRecentExports() {
+            try {
+                const response = await fetch('/api/exports/recent');
+                const data = await response.json();
+                
+                if (data.success && data.exports) {
+                    renderRecentExports(data.exports);
+                } else {
+                    document.getElementById('exportHistory').innerHTML = `
+                        <div style="text-align: center; padding: 40px; color: var(--text-secondary);">
+                            No recent exports
+                        </div>
+                    `;
+                }
+            } catch (error) {
+                console.error('Failed to load recent exports:', error);
+                // Mock data
+                const mockExports = [
+                    { id: '1', name: 'scan_results.json', format: 'JSON', size: '2.4 MB', date: '2025-12-19 14:30', url: '#' },
+                    { id: '2', name: 'monthly_report.pdf', format: 'PDF', size: '5.1 MB', date: '2025-12-18 09:15', url: '#' }
+                ];
+                renderRecentExports(mockExports);
+            }
+        }
+
+        function renderRecentExports(exports) {
+            const container = document.getElementById('exportHistory');
+            
+            container.innerHTML = exports.map(exp => `
+                <div class="history-item">
+                    <div class="history-info">
+                        <div class="history-name">${exp.name}</div>
+                        <div class="history-meta">
+                            <span><i class="fas fa-file"></i> ${exp.format}</span>
+                            <span><i class="fas fa-hdd"></i> ${exp.size}</span>
+                            <span><i class="fas fa-clock"></i> ${exp.date}</span>
+                        </div>
+                    </div>
+                    <button class="download-btn" onclick="downloadExport('${exp.id}')">
+                        <i class="fas fa-download"></i>
+                        Download
+                    </button>
+                </div>
+            `).join('');
+        }
+
+        async function exportData(format) {
+            try {
+                const response = await fetch('/api/export', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ format })
+                });
+
+                const data = await response.json();
+                
+                if (data.success && data.download_url) {
+                    window.location.href = data.download_url;
+                    loadRecentExports();
+                } else {
+                    alert('Export failed: ' + (data.error || 'Unknown error'));
+                }
+            } catch (error) {
+                alert('Export failed. Please try again.');
+            }
+        }
+
+        async function exportBulk() {
+            const fromDate = document.getElementById('fromDate').value;
+            const toDate = document.getElementById('toDate').value;
+            const format = document.getElementById('bulkFormat').value;
+
+            try {
+                const response = await fetch('/api/export/bulk', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ from_date: fromDate, to_date: toDate, format })
+                });
+
+                const data = await response.json();
+                
+                if (data.success && data.download_url) {
+                    window.location.href = data.download_url;
+                    loadRecentExports();
+                } else {
+                    alert('Bulk export failed');
+                }
+            } catch (error) {
+                alert('Bulk export failed. Please try again.');
+            }
+        }
+
+        async function downloadExport(id) {
+            window.location.href = `/api/exports/${id}/download`;
+        }
+    </script>
+</body>
+</html>

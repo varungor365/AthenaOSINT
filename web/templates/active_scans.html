@@ -1,0 +1,574 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Active Scans - AthenaOSINT</title>
+    <script src="https://cdn.socket.io/4.5.4/socket.io.min.js"></script>
+    <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css" rel="stylesheet">
+    <link href="https://fonts.googleapis.com/css2?family=Orbitron:wght@400;700;900&family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+    <style>
+        :root {
+            --bg-primary: #0a0e27;
+            --bg-secondary: #0f1419;
+            --bg-card: rgba(15, 20, 35, 0.95);
+            --primary: #00d9ff;
+            --secondary: #ff006e;
+            --accent: #8338ec;
+            --success: #06ffa5;
+            --warning: #ffbe0b;
+            --danger: #ff006e;
+            --text-primary: #ffffff;
+            --text-secondary: #94a3b8;
+            --border: rgba(0, 217, 255, 0.2);
+        }
+
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: 'Inter', sans-serif;
+            background: var(--bg-primary);
+            color: var(--text-primary);
+            min-height: 100vh;
+        }
+
+        .container {
+            max-width: 1600px;
+            margin: 0 auto;
+            padding: 30px;
+        }
+
+        .header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 40px;
+            padding-bottom: 20px;
+            border-bottom: 1px solid var(--border);
+        }
+
+        .page-title {
+            font-family: 'Orbitron', sans-serif;
+            font-size: 32px;
+            font-weight: 900;
+            background: linear-gradient(135deg, var(--primary), var(--accent));
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+            display: flex;
+            align-items: center;
+            gap: 15px;
+        }
+
+        .back-btn {
+            padding: 12px 24px;
+            background: rgba(255, 255, 255, 0.05);
+            border: 1px solid var(--border);
+            border-radius: 10px;
+            color: var(--text-primary);
+            text-decoration: none;
+            display: flex;
+            align-items: center;
+            gap: 10px;
+            transition: all 0.3s;
+        }
+
+        .back-btn:hover {
+            background: rgba(0, 217, 255, 0.1);
+            border-color: var(--primary);
+            transform: translateX(-5px);
+        }
+
+        .stats-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
+            gap: 20px;
+            margin-bottom: 40px;
+        }
+
+        .stat-card {
+            background: var(--bg-card);
+            border: 1px solid var(--border);
+            border-radius: 15px;
+            padding: 25px;
+            text-align: center;
+            transition: all 0.3s;
+        }
+
+        .stat-card:hover {
+            transform: translateY(-5px);
+            box-shadow: 0 10px 40px rgba(0, 217, 255, 0.2);
+        }
+
+        .stat-value {
+            font-size: 48px;
+            font-weight: 700;
+            background: linear-gradient(135deg, var(--primary), white);
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+            margin-bottom: 10px;
+        }
+
+        .stat-label {
+            font-size: 14px;
+            color: var(--text-secondary);
+            text-transform: uppercase;
+            letter-spacing: 1px;
+        }
+
+        .scans-container {
+            display: flex;
+            flex-direction: column;
+            gap: 20px;
+        }
+
+        .scan-card {
+            background: var(--bg-card);
+            border: 1px solid var(--border);
+            border-radius: 15px;
+            padding: 30px;
+            transition: all 0.3s;
+            position: relative;
+            overflow: hidden;
+        }
+
+        .scan-card::before {
+            content: '';
+            position: absolute;
+            left: 0;
+            top: 0;
+            width: 4px;
+            height: 100%;
+            background: linear-gradient(180deg, var(--primary), var(--accent));
+        }
+
+        .scan-card.running::before {
+            background: linear-gradient(180deg, var(--success), var(--primary));
+            animation: pulse 2s infinite;
+        }
+
+        @keyframes pulse {
+            0%, 100% { opacity: 1; }
+            50% { opacity: 0.5; }
+        }
+
+        .scan-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: flex-start;
+            margin-bottom: 20px;
+        }
+
+        .scan-info h3 {
+            font-size: 24px;
+            margin-bottom: 10px;
+            display: flex;
+            align-items: center;
+            gap: 10px;
+        }
+
+        .scan-meta {
+            display: flex;
+            gap: 20px;
+            color: var(--text-secondary);
+            font-size: 13px;
+        }
+
+        .scan-meta span {
+            display: flex;
+            align-items: center;
+            gap: 5px;
+        }
+
+        .scan-status {
+            padding: 8px 16px;
+            border-radius: 20px;
+            font-size: 12px;
+            font-weight: 600;
+            text-transform: uppercase;
+        }
+
+        .scan-status.running {
+            background: rgba(6, 255, 165, 0.15);
+            color: var(--success);
+            animation: pulse 2s infinite;
+        }
+
+        .scan-status.paused {
+            background: rgba(255, 190, 11, 0.15);
+            color: var(--warning);
+        }
+
+        .scan-status.completed {
+            background: rgba(0, 217, 255, 0.15);
+            color: var(--primary);
+        }
+
+        .progress-section {
+            margin-bottom: 20px;
+        }
+
+        .progress-label {
+            display: flex;
+            justify-content: space-between;
+            margin-bottom: 10px;
+            font-size: 14px;
+        }
+
+        .progress-bar {
+            width: 100%;
+            height: 8px;
+            background: rgba(255, 255, 255, 0.05);
+            border-radius: 10px;
+            overflow: hidden;
+        }
+
+        .progress-fill {
+            height: 100%;
+            background: linear-gradient(90deg, var(--primary), var(--accent));
+            border-radius: 10px;
+            transition: width 0.5s;
+            position: relative;
+        }
+
+        .progress-fill::after {
+            content: '';
+            position: absolute;
+            top: 0;
+            left: 0;
+            right: 0;
+            bottom: 0;
+            background: linear-gradient(90deg, transparent, rgba(255, 255, 255, 0.3), transparent);
+            animation: shimmer 2s infinite;
+        }
+
+        @keyframes shimmer {
+            0% { transform: translateX(-100%); }
+            100% { transform: translateX(100%); }
+        }
+
+        .modules-running {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 10px;
+            margin-bottom: 20px;
+        }
+
+        .module-tag {
+            padding: 6px 12px;
+            background: rgba(0, 217, 255, 0.1);
+            border: 1px solid var(--primary);
+            border-radius: 8px;
+            font-size: 12px;
+            display: flex;
+            align-items: center;
+            gap: 5px;
+        }
+
+        .scan-actions {
+            display: flex;
+            gap: 10px;
+        }
+
+        .action-btn {
+            padding: 10px 20px;
+            border-radius: 10px;
+            border: 1px solid var(--border);
+            background: rgba(255, 255, 255, 0.05);
+            color: var(--text-primary);
+            cursor: pointer;
+            transition: all 0.3s;
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            font-size: 14px;
+        }
+
+        .action-btn:hover {
+            background: rgba(0, 217, 255, 0.1);
+            border-color: var(--primary);
+            transform: translateY(-2px);
+        }
+
+        .action-btn.danger:hover {
+            background: rgba(255, 0, 110, 0.1);
+            border-color: var(--danger);
+        }
+
+        .logs-section {
+            background: rgba(0, 0, 0, 0.3);
+            border-radius: 10px;
+            padding: 15px;
+            max-height: 200px;
+            overflow-y: auto;
+            font-family: 'Courier New', monospace;
+            font-size: 12px;
+        }
+
+        .log-entry {
+            margin-bottom: 5px;
+            color: var(--text-secondary);
+        }
+
+        .log-entry.success { color: var(--success); }
+        .log-entry.warning { color: var(--warning); }
+        .log-entry.error { color: var(--danger); }
+
+        .empty-state {
+            text-align: center;
+            padding: 80px 20px;
+            color: var(--text-secondary);
+        }
+
+        .empty-state i {
+            font-size: 80px;
+            margin-bottom: 20px;
+            opacity: 0.3;
+        }
+
+        .empty-state h3 {
+            font-size: 24px;
+            margin-bottom: 10px;
+        }
+
+        .empty-state a {
+            color: var(--primary);
+            text-decoration: none;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <div class="header">
+            <div class="page-title">
+                <i class="fas fa-satellite-dish"></i>
+                Active Scans
+            </div>
+            <a href="/" class="back-btn">
+                <i class="fas fa-arrow-left"></i>
+                Back to Dashboard
+            </a>
+        </div>
+
+        <div class="stats-grid">
+            <div class="stat-card">
+                <div class="stat-value" id="runningCount">0</div>
+                <div class="stat-label">Running</div>
+            </div>
+            <div class="stat-card">
+                <div class="stat-value" id="pausedCount">0</div>
+                <div class="stat-label">Paused</div>
+            </div>
+            <div class="stat-card">
+                <div class="stat-value" id="modulesActive">0</div>
+                <div class="stat-label">Active Modules</div>
+            </div>
+            <div class="stat-card">
+                <div class="stat-value" id="avgProgress">0%</div>
+                <div class="stat-label">Avg Progress</div>
+            </div>
+        </div>
+
+        <div class="scans-container" id="scansContainer">
+            <!-- Scans loaded dynamically -->
+        </div>
+    </div>
+
+    <script>
+        const socket = io();
+        let activeScans = {};
+
+        document.addEventListener('DOMContentLoaded', () => {
+            loadActiveScans();
+            setupSocketListeners();
+            setInterval(loadActiveScans, 5000);
+        });
+
+        function setupSocketListeners() {
+            socket.on('scan_progress', (data) => {
+                updateScanProgress(data);
+            });
+
+            socket.on('scan_complete', (data) => {
+                loadActiveScans();
+            });
+        }
+
+        async function loadActiveScans() {
+            try {
+                const response = await fetch('/api/scans/active');
+                const data = await response.json();
+                
+                if (data.success) {
+                    activeScans = data.scans || {};
+                    renderScans();
+                    updateStats();
+                }
+            } catch (error) {
+                console.error('Failed to load active scans:', error);
+            }
+        }
+
+        function renderScans() {
+            const container = document.getElementById('scansContainer');
+            const scans = Object.entries(activeScans);
+
+            if (scans.length === 0) {
+                container.innerHTML = `
+                    <div class="empty-state">
+                        <i class="fas fa-bed"></i>
+                        <h3>No Active Scans</h3>
+                        <p>All quiet on the OSINT front</p>
+                        <p><a href="/">Launch a new scan</a> to get started</p>
+                    </div>
+                `;
+                return;
+            }
+
+            container.innerHTML = scans.map(([id, scan]) => {
+                const progress = scan.progress || 0;
+                const status = scan.status || 'running';
+                const modules = scan.modules || [];
+                const target = scan.target || 'Unknown';
+                const started = scan.started_at ? new Date(scan.started_at).toLocaleString() : 'Unknown';
+
+                return `
+                    <div class="scan-card ${status}">
+                        <div class="scan-header">
+                            <div class="scan-info">
+                                <h3>
+                                    <i class="fas fa-crosshairs"></i>
+                                    ${target}
+                                </h3>
+                                <div class="scan-meta">
+                                    <span><i class="fas fa-clock"></i> ${started}</span>
+                                    <span><i class="fas fa-fingerprint"></i> ${id.substring(0, 8)}</span>
+                                    <span><i class="fas fa-layer-group"></i> ${modules.length} modules</span>
+                                </div>
+                            </div>
+                            <div class="scan-status ${status}">
+                                ${status}
+                            </div>
+                        </div>
+
+                        <div class="progress-section">
+                            <div class="progress-label">
+                                <span>Overall Progress</span>
+                                <span><strong>${progress}%</strong></span>
+                            </div>
+                            <div class="progress-bar">
+                                <div class="progress-fill" style="width: ${progress}%"></div>
+                            </div>
+                        </div>
+
+                        <div class="modules-running">
+                            ${modules.map(m => `
+                                <div class="module-tag">
+                                    <i class="fas fa-cube"></i>
+                                    ${m}
+                                </div>
+                            `).join('')}
+                        </div>
+
+                        <div class="scan-actions">
+                            ${status === 'running' ? `
+                                <button class="action-btn" onclick="pauseScan('${id}')">
+                                    <i class="fas fa-pause"></i> Pause
+                                </button>
+                            ` : ''}
+                            ${status === 'paused' ? `
+                                <button class="action-btn" onclick="resumeScan('${id}')">
+                                    <i class="fas fa-play"></i> Resume
+                                </button>
+                            ` : ''}
+                            <button class="action-btn" onclick="viewResults('${id}')">
+                                <i class="fas fa-eye"></i> View Results
+                            </button>
+                            <button class="action-btn danger" onclick="stopScan('${id}')">
+                                <i class="fas fa-stop"></i> Stop
+                            </button>
+                        </div>
+
+                        <div class="logs-section" id="logs-${id}">
+                            ${(scan.logs || []).slice(-5).map(log => `
+                                <div class="log-entry ${log.level || ''}">${log.message || log}</div>
+                            `).join('') || '<div class="log-entry">No logs available</div>'}
+                        </div>
+                    </div>
+                `;
+            }).join('');
+        }
+
+        function updateStats() {
+            const scans = Object.values(activeScans);
+            const running = scans.filter(s => s.status === 'running').length;
+            const paused = scans.filter(s => s.status === 'paused').length;
+            const totalModules = scans.reduce((sum, s) => sum + (s.modules?.length || 0), 0);
+            const avgProgress = scans.length > 0 
+                ? Math.round(scans.reduce((sum, s) => sum + (s.progress || 0), 0) / scans.length)
+                : 0;
+
+            document.getElementById('runningCount').textContent = running;
+            document.getElementById('pausedCount').textContent = paused;
+            document.getElementById('modulesActive').textContent = totalModules;
+            document.getElementById('avgProgress').textContent = avgProgress + '%';
+        }
+
+        function updateScanProgress(data) {
+            if (activeScans[data.scan_id]) {
+                activeScans[data.scan_id].progress = data.progress;
+                if (data.message) {
+                    if (!activeScans[data.scan_id].logs) activeScans[data.scan_id].logs = [];
+                    activeScans[data.scan_id].logs.push({ message: data.message });
+                }
+                renderScans();
+            }
+        }
+
+        async function pauseScan(scanId) {
+            try {
+                const response = await fetch(`/api/scan/${scanId}/pause`, { method: 'POST' });
+                const data = await response.json();
+                if (data.success) {
+                    loadActiveScans();
+                }
+            } catch (error) {
+                console.error('Failed to pause scan:', error);
+            }
+        }
+
+        async function resumeScan(scanId) {
+            try {
+                const response = await fetch(`/api/scan/${scanId}/resume`, { method: 'POST' });
+                const data = await response.json();
+                if (data.success) {
+                    loadActiveScans();
+                }
+            } catch (error) {
+                console.error('Failed to resume scan:', error);
+            }
+        }
+
+        async function stopScan(scanId) {
+            if (!confirm('Are you sure you want to stop this scan?')) return;
+            
+            try {
+                const response = await fetch(`/api/scan/${scanId}/stop`, { method: 'POST' });
+                const data = await response.json();
+                if (data.success) {
+                    loadActiveScans();
+                }
+            } catch (error) {
+                console.error('Failed to stop scan:', error);
+            }
+        }
+
+        function viewResults(scanId) {
+            window.location.href = `/history?scan=${scanId}`;
+        }
+    </script>
+</body>
+</html>
