@@ -25,7 +25,14 @@ from config import get_config
 from core.engine import AthenaEngine
 from core.validators import validate_target, detect_target_type
 from modules import get_available_modules
-from automation_suite.api import list_jobs as auto_list_jobs, create_job as auto_create_job, run_job as auto_run_job, proxies as auto_proxies
+from automation_suite.api import (
+    list_jobs as auto_list_jobs,
+    create_job as auto_create_job,
+    run_job as auto_run_job,
+    proxies as auto_proxies,
+    get_config as auto_get_config,
+    update_config as auto_update_config,
+)
 
 # Initialize app FIRST
 app, socketio = create_app()
@@ -173,6 +180,18 @@ def automation_proxies():
         return jsonify(auto_proxies())
     except Exception as e:
         return jsonify({'success': False, 'error': str(e)}), 500
+
+
+@app.route('/api/automation/config', methods=['GET', 'PUT'])
+def automation_config():
+    try:
+        if request.method == 'GET':
+            return jsonify(auto_get_config())
+        else:
+            payload = request.get_json() or {}
+            return jsonify(auto_update_config(payload))
+    except Exception as e:
+        return jsonify({'success': False, 'error': str(e)}), 400
 
 
 # ... imports ...

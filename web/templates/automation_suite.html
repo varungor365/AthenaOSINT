@@ -20,7 +20,7 @@
     body { font-family: 'Inter', sans-serif; background: var(--bg-primary); color: var(--text-primary); }
     .container { max-width: 1600px; margin: 0 auto; padding: 30px; }
     .header { display:flex; justify-content:space-between; align-items:center; margin-bottom:30px; padding-bottom:15px; border-bottom:1px solid var(--border); }
-    .page-title { font-family:'Orbitron',sans-serif; font-size:28px; font-weight:900; background:linear-gradient(135deg,var(--primary),var(--accent)); -webkit-background-clip:text; -webkit-text-fill-color:transparent; display:flex; align-items:center; gap:10px; }
+    .page-title { font-family:'Orbitron',sans-serif; font-size:28px; font-weight:900; background:linear-gradient(135deg,var(--primary),var(--accent)); -webkit-background-clip:text; background-clip:text; -webkit-text-fill-color:transparent; display:flex; align-items:center; gap:10px; }
     .back-btn { padding:10px 20px; border:1px solid var(--border); border-radius:10px; text-decoration:none; color:var(--text-primary); }
     .grid { display:grid; grid-template-columns: 1.1fr 0.9fr; gap:20px; }
     .card { background:var(--bg-card); border:1px solid var(--border); border-radius:15px; padding:20px; }
@@ -36,6 +36,8 @@
     .log { margin-bottom:6px; color:var(--text-secondary); }
     .stat { display:grid; grid-template-columns: repeat(4, 1fr); gap:12px; margin-bottom:12px; }
     .stat .box { background:rgba(255,255,255,0.03); border:1px solid var(--border); border-radius:10px; padding:12px; text-align:center; }
+    .full { grid-column: 1 / -1; }
+    .status { margin-left: 10px; color: var(--text-secondary); }
   </style>
 </head>
 <body>
@@ -72,6 +74,30 @@
         <div class="logs" id="logs"></div>
         <h3 style="margin-top:12px;">Current Proxies</h3>
         <div class="logs" id="proxies"></div>
+      </div>
+      <div class="card full">
+        <h3>Suite Settings</h3>
+        <div class="controls" style="flex-wrap:wrap; gap:12px;">
+          <label><input type="checkbox" id="cfg-allow-external"> Allow External Targets</label>
+          <label>Max Concurrency <input class="input" type="number" id="cfg-max-concurrency" min="1" max="32" style="width:100px"></label>
+        </div>
+        <div style="display:grid; grid-template-columns: 1fr 1fr; gap:12px;">
+          <div>
+            <h4 style="color:var(--primary); margin:8px 0;">Allowlist Domains</h4>
+            <textarea id="cfg-allowlist" rows="6" class="logs" style="width:100%;"></textarea>
+          </div>
+          <div>
+            <h4 style="color:var(--primary); margin:8px 0;">Proxy Sources (JSON)</h4>
+            <textarea id="cfg-proxy-sources" rows="6" class="logs" style="width:100%;">[
+  {"type":"url","value":"https://example.com/proxies.txt"},
+  {"type":"file","value":"data/proxies.txt"}
+]</textarea>
+          </div>
+        </div>
+        <div style="margin-top:12px;">
+          <button class="btn btn-primary" id="cfg-save"><i class="fas fa-save"></i> Save Settings</button>
+          <span id="cfg-status" class="status"></span>
+        </div>
       </div>
     </div>
   </div>
@@ -145,8 +171,61 @@
       document.getElementById('proxies').innerHTML = list.map(p => `<div class='log'>${p}</div>`).join('');
     }
 
+    async function loadConfig() {
+      const r = await fetch('/api/automation/config');
+      const resp = await r.json();
+      const cfg = resp.config || {};
+      document.getElementById('cfg-allow-external').checked = !!cfg.allow_external;
+      document.getElementById('cfg-max-concurrency').value = cfg.max_concurrency || 1;
+      const allowlist = (cfg.target_policy && cfg.target_policy.allowlist) || [];
+      document.getElementById('cfg-allowlist').value = allowlist.join('\n');
+      const sources = (cfg.proxy_sources || []).map(s => ({ type: s.type, value: s.value }));
+      document.getElementById('cfg-proxy-sources').value = JSON.stringify(sources, null, 2);
+    }
+
+    async function saveConfig() {
+      const status = document.getElementById('cfg-status');
+      status.textContent = 'Saving...';
+      const allowExternal = document.getElementById('cfg-allow-external').checked;
+      const maxConc = parseInt(document.getElementById('cfg-max-concurrency').value || '1', 10);
+      const allowlist = document.getElementById('cfg-allowlist').value
+        .split('\n')
+        .map(s => s.trim())
+        .filter(Boolean);
+      let sources = [];
+      try {
+        sources = JSON.parse(document.getElementById('cfg-proxy-sources').value || '[]');
+      } catch (e) {
+        status.textContent = 'Invalid proxy sources JSON';
+        status.style.color = '#ff4d4f';
+        return;
+      }
+      const payload = {
+        allow_external: allowExternal,
+        max_concurrency: maxConc,
+        target_policy: { allowlist },
+        proxy_sources: sources
+      };
+      const r = await fetch('/api/automation/config', {
+        method: 'PUT',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(payload)
+      });
+      const res = await r.json();
+      if (res.success) {
+        status.textContent = 'Saved';
+        status.style.color = '#52c41a';
+        loadProxies();
+      } else {
+        status.textContent = res.error || 'Save failed';
+        status.style.color = '#ff4d4f';
+      }
+    }
+
     loadJobs();
     loadProxies();
+    loadConfig();
+    document.getElementById('cfg-save').addEventListener('click', saveConfig);
   </script>
 </body>
 </html>

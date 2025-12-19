@@ -19,6 +19,8 @@ class AutomationManager:
         self._proxy_mgr = ProxyManager([s.__dict__ for s in self.config.proxy_sources])
         Path(self.config.storage_path).mkdir(parents=True, exist_ok=True)
         self.jobs_path = Path(self.config.storage_path) / "jobs.json"
+        self.config_path = Path(self.config.storage_path) / "config.json"
+        self._load_config()
         self._load_jobs()
 
     # Storage helpers
@@ -36,6 +38,37 @@ class AutomationManager:
         try:
             payload = [j.__dict__ for j in self.jobs.values()]
             self.jobs_path.write_text(json.dumps(payload, indent=2), encoding="utf-8")
+        except Exception:
+            pass
+
+    def _load_config(self):
+        # Load persisted config if present
+        try:
+            if self.config_path.exists():
+                data = json.loads(self.config_path.read_text(encoding="utf-8"))
+                # Update config fields
+                self.config.max_concurrency = int(data.get("max_concurrency", self.config.max_concurrency))
+                tp = data.get("target_policy", {})
+                self.config.target_policy.allow_external = bool(tp.get("allow_external", self.config.target_policy.allow_external))
+                self.config.target_policy.allowed_domains = tp.get("allowed_domains", self.config.target_policy.allowed_domains) or []
+                sources = data.get("proxy_sources", [])
+                if sources:
+                    self.config.proxy_sources = [
+                        type(self.config.proxy_sources[0])(**s) if isinstance(self.config.proxy_sources[0], type) else __import__("types")
+                        for s in sources
+                    ]
+                    # If dataclass is ProxySource, reconstruct properly
+                    from .config import ProxySource
+                    self.config.proxy_sources = [ProxySource(**s) for s in sources]
+                # rebuild proxy manager with new sources
+                self._proxy_mgr = ProxyManager([s.__dict__ for s in self.config.proxy_sources])
+        except Exception:
+            # Ignore config load errors to avoid breaking startup
+            pass
+
+    def _save_config(self):
+        try:
+            self.config_path.write_text(json.dumps(self.config.to_dict(), indent=2), encoding="utf-8")
         except Exception:
             pass
 
@@ -112,6 +145,39 @@ class AutomationManager:
 
     def proxies(self) -> List[str]:
         return self._proxy_mgr.list()
+
+    def get_config_dict(self) -> Dict:
+        return self.config.to_dict()
+
+    def update_config(self, payload: Dict) -> Dict:
+        # Update safe-configurable fields
+        tp = payload.get("target_policy", {})
+        if tp:
+            allow_external = tp.get("allow_external")
+            if allow_external is not None:
+                self.config.target_policy.allow_external = bool(allow_external)
+            allowed_domains = tp.get("allowed_domains")
+            if isinstance(allowed_domains, list):
+                self.config.target_policy.allowed_domains = allowed_domains
+
+        max_concurrency = payload.get("max_concurrency")
+        if max_concurrency is not None:
+            self.config.max_concurrency = int(max_concurrency)
+
+        sources = payload.get("proxy_sources")
+        if isinstance(sources, list):
+            from .config import ProxySource
+            try:
+                self.config.proxy_sources = [ProxySource(**s) for s in sources]
+            except Exception:
+                # ignore invalid structures
+                pass
+            # rebuild proxy manager
+            self._proxy_mgr = ProxyManager([s.__dict__ for s in self.config.proxy_sources])
+
+        # persist
+        self._save_config()
+        return self.get_config_dict()
 
 
 def get_manager() -> AutomationManager:

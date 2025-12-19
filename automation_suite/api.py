@@ -30,3 +30,14 @@ def run_job(job_id: str, on_progress=None):
 def proxies():
     mgr = get_manager()
     return {"success": True, "proxies": mgr.proxies()}
+
+
+def get_config():
+    mgr = get_manager()
+    return {"success": True, "config": mgr.get_config_dict()}
+
+
+def update_config(payload: Dict):
+    mgr = get_manager()
+    new_cfg = mgr.update_config(payload or {})
+    return {"success": True, "config": new_cfg}
