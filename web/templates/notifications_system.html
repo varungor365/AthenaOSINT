@@ -1,0 +1,152 @@
+<!-- Notification Toast System - Add to dashboard.html header -->
+<style>
+    .notification-container {
+        position: fixed;
+        top: 20px;
+        right: 20px;
+        z-index: 9999;
+        display: flex;
+        flex-direction: column;
+        gap: 10px;
+        max-width: 400px;
+    }
+    .notification {
+        background: rgba(10, 14, 39, 0.98);
+        border: 2px solid;
+        border-radius: 10px;
+        padding: 16px;
+        color: #ffffff;
+        display: flex;
+        align-items: center;
+        gap: 12px;
+        animation: slideIn 0.3s ease;
+        box-shadow: 0 8px 32px rgba(0, 0, 0, 0.3);
+    }
+    @keyframes slideIn {
+        from { transform: translateX(400px); opacity: 0; }
+        to { transform: translateX(0); opacity: 1; }
+    }
+    @keyframes slideOut {
+        to { transform: translateX(400px); opacity: 0; }
+    }
+    .notification.exit { animation: slideOut 0.3s ease forwards; }
+    .notification.info { border-color: #00d9ff; }
+    .notification.success { border-color: #06ffa5; }
+    .notification.warning { border-color: #ffbe0b; }
+    .notification.error { border-color: #ff006e; }
+    .notification-icon {
+        font-size: 20px;
+        flex-shrink: 0;
+    }
+    .notification-content {
+        flex: 1;
+    }
+    .notification-content strong {
+        display: block;
+        margin-bottom: 2px;
+    }
+    .notification-content p {
+        font-size: 12px;
+        opacity: 0.8;
+        margin: 0;
+    }
+    .notification-close {
+        cursor: pointer;
+        opacity: 0.6;
+        font-size: 16px;
+        flex-shrink: 0;
+    }
+    .notification-close:hover { opacity: 1; }
+</style>
+
+<div id="notificationContainer" class="notification-container"></div>
+
+<script>
+    const socket = io();
+    
+    function showNotification(type, title, message = '') {
+        const icons = {
+            'info': 'fas fa-info-circle',
+            'success': 'fas fa-check-circle',
+            'warning': 'fas fa-exclamation-circle',
+            'error': 'fas fa-times-circle',
+            'task_created': 'fas fa-clock',
+            'task_deleted': 'fas fa-trash',
+            'script_saved': 'fas fa-save',
+            'script_executed': 'fas fa-play',
+            'scan_started': 'fas fa-spinner',
+            'scan_complete': 'fas fa-check-circle',
+        };
+        
+        const typeMap = {
+            'task_created': 'info',
+            'task_deleted': 'warning',
+            'script_saved': 'success',
+            'script_executed': 'success',
+            'scan_started': 'info',
+            'scan_complete': 'success',
+        };
+        
+        const notifType = typeMap[type] || type;
+        const icon = icons[type] || icons['info'];
+        const container = document.getElementById('notificationContainer');
+        
+        const notif = document.createElement('div');
+        notif.className = `notification ${notifType}`;
+        notif.innerHTML = `
+            <i class="${icon} notification-icon"></i>
+            <div class="notification-content">
+                <strong>${title}</strong>
+                ${message ? `<p>${message}</p>` : ''}
+            </div>
+            <i class="fas fa-times notification-close" onclick="this.parentElement.classList.add('exit'); setTimeout(() => this.parentElement.remove(), 300);"></i>
+        `;
+        container.appendChild(notif);
+        
+        setTimeout(() => {
+            if (notif.parentElement) {
+                notif.classList.add('exit');
+                setTimeout(() => notif.remove(), 300);
+            }
+        }, 5000);
+    }
+    
+    // Listen for real-time notifications
+    socket.on('notification', (data) => {
+        const type = data.type || 'info';
+        let title = '';
+        let message = '';
+        
+        switch(type) {
+            case 'task_created':
+                title = 'Task Scheduled';
+                message = `"${data.task}" has been created`;
+                break;
+            case 'task_deleted':
+                title = 'Task Deleted';
+                message = 'Task has been removed from schedule';
+                break;
+            case 'script_saved':
+                title = 'Script Saved';
+                message = `"${data.script}" has been saved`;
+                break;
+            case 'script_executed':
+                title = 'Script Executed';
+                message = `"${data.script}" completed`;
+                break;
+            case 'scan_started':
+                title = 'Scan Started';
+                message = `Scanning ${data.target}`;
+                break;
+            case 'scan_complete':
+                title = 'Scan Complete';
+                message = `Found ${data.results} results`;
+                break;
+            default:
+                title = data.title || 'Notification';
+                message = data.message || '';
+        }
+        
+        showNotification(type, title, message);
+    });
+</script>

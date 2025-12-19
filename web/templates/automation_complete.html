@@ -1,0 +1,132 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Automation Suite - AthenaOSINT</title>
+    <script src="https://cdn.socket.io/4.5.4/socket.io.min.js"></script>
+    <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css" rel="stylesheet">
+    <link href="https://fonts.googleapis.com/css2?family=Orbitron:wght@400;700;900&family=Inter:wght@300;400;500;600&display=swap" rel="stylesheet">
+    <style>
+        :root { --bg-primary: #0a0e27; --bg-secondary: #0f1419; --primary: #00d9ff; --secondary: #ff006e; --accent: #8338ec; --success: #06ffa5; --text-primary: #ffffff; --text-secondary: #94a3b8; --border: rgba(0, 217, 255, 0.2); }
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+        body { font-family: 'Inter', sans-serif; background: var(--bg-primary); color: var(--text-primary); }
+        .container { padding: 30px; }
+        .header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 30px; }
+        .page-title { font-family: 'Orbitron', sans-serif; font-size: 28px; font-weight: 900; background: linear-gradient(135deg, var(--primary), var(--accent)); -webkit-background-clip: text; -webkit-text-fill-color: transparent; }
+        .back-btn { padding: 10px 20px; background: rgba(255, 255, 255, 0.05); border: 1px solid var(--border); border-radius: 10px; color: var(--text-primary); text-decoration: none; cursor: pointer; }
+        .back-btn:hover { background: rgba(0, 217, 255, 0.1); border-color: var(--primary); }
+        .grid { display: grid; grid-template-columns: 1fr 1fr; gap: 20px; margin-bottom: 30px; }
+        .card { background: rgba(15, 20, 35, 0.95); border: 1px solid var(--border); border-radius: 15px; padding: 20px; }
+        .card h3 { margin-bottom: 15px; color: var(--primary); font-size: 16px; }
+        .form-group { margin-bottom: 15px; }
+        .form-group label { display: block; font-size: 12px; color: var(--text-secondary); margin-bottom: 6px; text-transform: uppercase; }
+        input, textarea, select { width: 100%; padding: 10px; background: rgba(255, 255, 255, 0.05); border: 1px solid var(--border); border-radius: 8px; color: var(--text-primary); font-size: 14px; }
+        button { background: linear-gradient(135deg, var(--primary), var(--accent)); border: none; color: white; padding: 10px 20px; border-radius: 8px; cursor: pointer; font-weight: 600; margin-top: 10px; }
+        button:hover { box-shadow: 0 0 20px rgba(0, 217, 255, 0.5); }
+        .jobs-list { display: grid; gap: 10px; }
+        .job-item { background: rgba(255, 255, 255, 0.03); border: 1px solid var(--border); padding: 15px; border-radius: 10px; display: flex; justify-content: space-between; align-items: center; }
+        .job-status { padding: 4px 12px; border-radius: 20px; font-size: 12px; font-weight: 600; }
+        .status-pending { background: rgba(255, 190, 11, 0.2); color: #ffbe0b; }
+        .status-running { background: rgba(0, 217, 255, 0.2); color: var(--primary); }
+        .status-done { background: rgba(6, 255, 165, 0.2); color: var(--success); }
+        .status-failed { background: rgba(255, 0, 110, 0.2); color: var(--secondary); }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <div class="header">
+            <h1 class="page-title"><i class="fas fa-gears"></i> Automation Suite</h1>
+            <a href="/" class="back-btn"><i class="fas fa-arrow-left"></i> Back</a>
+        </div>
+        <div class="grid">
+            <div class="card">
+                <h3>Create Job</h3>
+                <div class="form-group">
+                    <label>Job Name</label>
+                    <input type="text" id="jobName" placeholder="e.g., Scrape targets">
+                </div>
+                <div class="form-group">
+                    <label>Target Type</label>
+                    <select id="targetType">
+                        <option value="url">URL</option>
+                        <option value="email">Email</option>
+                        <option value="domain">Domain</option>
+                    </select>
+                </div>
+                <div class="form-group">
+                    <label>Target Value</label>
+                    <input type="text" id="targetValue" placeholder="e.g., example.com">
+                </div>
+                <button onclick="createJob()"><i class="fas fa-plus"></i> Create</button>
+            </div>
+            <div class="card">
+                <h3>Config</h3>
+                <div class="form-group">
+                    <label>Concurrency</label>
+                    <input type="number" id="concurrency" value="5" min="1" max="20">
+                </div>
+                <div class="form-group">
+                    <label>Timeout (seconds)</label>
+                    <input type="number" id="timeout" value="30" min="5">
+                </div>
+                <button onclick="saveConfig()"><i class="fas fa-save"></i> Save</button>
+            </div>
+        </div>
+        <div class="card">
+            <h3>Active Jobs</h3>
+            <div class="jobs-list" id="jobsList"></div>
+        </div>
+    </div>
+    <script>
+        const socket = io();
+        let jobs = [];
+
+        function loadJobs() {
+            fetch('/api/automation/jobs').then(r => r.json()).then(data => {
+                jobs = data.jobs || [];
+                renderJobs();
+            });
+        }
+
+        function renderJobs() {
+            const html = jobs.map(j => `
+                <div class="job-item">
+                    <div>
+                        <strong>${j.name}</strong><br>
+                        <span style="font-size: 12px; color: var(--text-secondary);">${j.target_type}: ${j.target_value}</span>
+                    </div>
+                    <div style="display: flex; gap: 10px; align-items: center;">
+                        <span class="job-status status-${j.status}">${j.status}</span>
+                        ${j.status === 'pending' ? `<button onclick="runJob('${j.id}')" style="margin: 0; padding: 6px 12px; font-size: 12px;">Run</button>` : ''}
+                    </div>
+                </div>
+            `).join('');
+            document.getElementById('jobsList').innerHTML = html || '<p style="color: var(--text-secondary);">No jobs yet</p>';
+        }
+
+        function createJob() {
+            const data = {
+                name: document.getElementById('jobName').value,
+                target_type: document.getElementById('targetType').value,
+                target_value: document.getElementById('targetValue').value,
+            };
+            fetch('/api/automation/jobs', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(data) })
+                .then(r => r.json()).then(res => { if (res.success) { loadJobs(); document.getElementById('jobName').value = ''; document.getElementById('targetValue').value = ''; } });
+        }
+
+        function runJob(jobId) {
+            fetch(`/api/automation/run/${jobId}`, { method: 'POST' }).then(r => r.json()).then(() => { loadJobs(); });
+        }
+
+        function saveConfig() {
+            const data = { concurrency: parseInt(document.getElementById('concurrency').value), timeout: parseInt(document.getElementById('timeout').value) };
+            fetch('/api/automation/config', { method: 'PUT', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(data) });
+        }
+
+        socket.on('automation_progress', (evt) => { loadJobs(); });
+        loadJobs();
+        setInterval(loadJobs, 5000);
+    </script>
+</body>
+</html>

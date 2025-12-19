@@ -1,0 +1,147 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Scheduled Tasks - AthenaOSINT</title>
+    <script src="https://cdn.socket.io/4.5.4/socket.io.min.js"></script>
+    <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css" rel="stylesheet">
+    <link href="https://fonts.googleapis.com/css2?family=Orbitron:wght@400;700;900&family=Inter:wght@300;400;500;600&display=swap" rel="stylesheet">
+    <style>
+        :root { --bg-primary: #0a0e27; --bg-secondary: #0f1419; --primary: #00d9ff; --accent: #8338ec; --success: #06ffa5; --text-primary: #ffffff; --text-secondary: #94a3b8; --border: rgba(0, 217, 255, 0.2); }
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+        body { font-family: 'Inter', sans-serif; background: var(--bg-primary); color: var(--text-primary); }
+        .container { padding: 30px; max-width: 1200px; margin: 0 auto; }
+        .header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 30px; }
+        .page-title { font-family: 'Orbitron', sans-serif; font-size: 28px; background: linear-gradient(135deg, var(--primary), var(--accent)); -webkit-background-clip: text; -webkit-text-fill-color: transparent; }
+        .back-btn { padding: 10px 20px; background: rgba(255, 255, 255, 0.05); border: 1px solid var(--border); border-radius: 10px; color: var(--text-primary); text-decoration: none; cursor: pointer; }
+        .card { background: rgba(15, 20, 35, 0.95); border: 1px solid var(--border); border-radius: 15px; padding: 20px; margin-bottom: 20px; }
+        .form-row { display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 15px; margin-bottom: 15px; }
+        .form-group { display: flex; flex-direction: column; }
+        label { font-size: 12px; color: var(--text-secondary); margin-bottom: 6px; text-transform: uppercase; font-weight: 600; }
+        input, select, textarea { padding: 10px; background: rgba(255, 255, 255, 0.05); border: 1px solid var(--border); border-radius: 8px; color: var(--text-primary); font-size: 14px; }
+        button { background: linear-gradient(135deg, var(--primary), var(--accent)); border: none; color: white; padding: 10px 20px; border-radius: 8px; cursor: pointer; font-weight: 600; }
+        button:hover { box-shadow: 0 0 20px rgba(0, 217, 255, 0.5); }
+        .tasks-table { width: 100%; border-collapse: collapse; }
+        .tasks-table th { background: rgba(0, 217, 255, 0.1); padding: 12px; text-align: left; border-bottom: 1px solid var(--border); }
+        .tasks-table td { padding: 12px; border-bottom: 1px solid var(--border); }
+        .badge { display: inline-block; padding: 4px 12px; border-radius: 20px; font-size: 12px; font-weight: 600; }
+        .badge-active { background: rgba(6, 255, 165, 0.2); color: var(--success); }
+        .badge-paused { background: rgba(255, 190, 11, 0.2); color: #ffbe0b; }
+        .badge-disabled { background: rgba(255, 255, 255, 0.1); color: var(--text-secondary); }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <div class="header">
+            <h1 class="page-title"><i class="fas fa-clock"></i> Scheduled Tasks</h1>
+            <a href="/" class="back-btn"><i class="fas fa-arrow-left"></i> Back</a>
+        </div>
+        <div class="card">
+            <h3 style="margin-bottom: 20px;">Create Scheduled Task</h3>
+            <div class="form-row">
+                <div class="form-group">
+                    <label>Task Name</label>
+                    <input type="text" id="taskName" placeholder="e.g., Daily recon scan">
+                </div>
+                <div class="form-group">
+                    <label>Task Type</label>
+                    <select id="taskType">
+                        <option value="scan">OSINT Scan</option>
+                        <option value="monitor">Monitor</option>
+                        <option value="backup">Backup</option>
+                        <option value="report">Report</option>
+                    </select>
+                </div>
+                <div class="form-group">
+                    <label>Schedule (cron)</label>
+                    <input type="text" id="schedule" placeholder="0 0 * * * (midnight daily)">
+                </div>
+            </div>
+            <div class="form-row">
+                <div class="form-group" style="grid-column: 1/-1;">
+                    <label>Command/Target</label>
+                    <textarea id="taskCommand" rows="3" placeholder="Command or target to execute"></textarea>
+                </div>
+            </div>
+            <button onclick="createTask()"><i class="fas fa-plus"></i> Create Task</button>
+        </div>
+        <div class="card">
+            <h3 style="margin-bottom: 20px;">Active Tasks</h3>
+            <table class="tasks-table">
+                <thead>
+                    <tr>
+                        <th>Task Name</th>
+                        <th>Type</th>
+                        <th>Schedule</th>
+                        <th>Status</th>
+                        <th>Last Run</th>
+                        <th>Actions</th>
+                    </tr>
+                </thead>
+                <tbody id="tasksList">
+                    <tr><td colspan="6" style="text-align: center; color: var(--text-secondary);">No tasks scheduled</td></tr>
+                </tbody>
+            </table>
+        </div>
+    </div>
+    <script>
+        const socket = io();
+        let tasks = [];
+
+        function loadTasks() {
+            fetch('/api/scheduler/tasks').then(r => r.json()).then(data => {
+                tasks = data.tasks || [];
+                renderTasks();
+            }).catch(() => {});
+        }
+
+        function renderTasks() {
+            if (!tasks.length) {
+                document.getElementById('tasksList').innerHTML = '<tr><td colspan="6" style="text-align: center; color: var(--text-secondary);">No tasks scheduled</td></tr>';
+                return;
+            }
+            const html = tasks.map(t => `
+                <tr>
+                    <td><strong>${t.name}</strong></td>
+                    <td>${t.type}</td>
+                    <td><code>${t.schedule}</code></td>
+                    <td><span class="badge badge-${t.status}">${t.status}</span></td>
+                    <td>${t.last_run || 'Never'}</td>
+                    <td>
+                        ${t.status === 'active' ? `<button onclick="toggleTask('${t.id}', 'paused')" style="padding: 4px 8px; font-size: 12px;">Pause</button>` : `<button onclick="toggleTask('${t.id}', 'active')" style="padding: 4px 8px; font-size: 12px;">Resume</button>`}
+                        <button onclick="deleteTask('${t.id}')" style="padding: 4px 8px; font-size: 12px; background: rgba(255, 0, 110, 0.3); margin-left: 5px;">Delete</button>
+                    </td>
+                </tr>
+            `).join('');
+            document.getElementById('tasksList').innerHTML = html;
+        }
+
+        function createTask() {
+            const data = {
+                name: document.getElementById('taskName').value,
+                type: document.getElementById('taskType').value,
+                schedule: document.getElementById('schedule').value,
+                command: document.getElementById('taskCommand').value,
+            };
+            fetch('/api/scheduler/tasks', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(data) })
+                .then(r => r.json()).then(res => { if (res.success) { loadTasks(); document.getElementById('taskName').value = ''; document.getElementById('taskCommand').value = ''; } });
+        }
+
+        function toggleTask(taskId, status) {
+            fetch(`/api/scheduler/tasks/${taskId}`, { method: 'PUT', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ status }) })
+                .then(r => r.json()).then(() => loadTasks());
+        }
+
+        function deleteTask(taskId) {
+            if (confirm('Delete this task?')) {
+                fetch(`/api/scheduler/tasks/${taskId}`, { method: 'DELETE' }).then(() => loadTasks());
+            }
+        }
+
+        socket.on('task_executed', () => loadTasks());
+        loadTasks();
+        setInterval(loadTasks, 10000);
+    </script>
+</body>
+</html>

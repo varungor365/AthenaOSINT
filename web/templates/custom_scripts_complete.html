@@ -1,0 +1,129 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Custom Scripts - AthenaOSINT</title>
+    <script src="https://cdn.socket.io/4.5.4/socket.io.min.js"></script>
+    <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css" rel="stylesheet">
+    <link href="https://fonts.googleapis.com/css2?family=Orbitron:wght@400;700;900&family=Inter:wght@300;400;500;600&display=swap" rel="stylesheet">
+    <style>
+        :root { --bg-primary: #0a0e27; --bg-secondary: #0f1419; --primary: #00d9ff; --accent: #8338ec; --text-primary: #ffffff; --text-secondary: #94a3b8; --border: rgba(0, 217, 255, 0.2); }
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+        body { font-family: 'Inter', sans-serif; background: var(--bg-primary); color: var(--text-primary); }
+        .container { padding: 30px; max-width: 1400px; margin: 0 auto; }
+        .header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 30px; }
+        .page-title { font-family: 'Orbitron', sans-serif; font-size: 28px; background: linear-gradient(135deg, var(--primary), var(--accent)); -webkit-background-clip: text; -webkit-text-fill-color: transparent; }
+        .back-btn { padding: 10px 20px; background: rgba(255, 255, 255, 0.05); border: 1px solid var(--border); border-radius: 10px; color: var(--text-primary); cursor: pointer; }
+        .grid { display: grid; grid-template-columns: 1fr 1fr; gap: 20px; margin-bottom: 20px; }
+        .card { background: rgba(15, 20, 35, 0.95); border: 1px solid var(--border); border-radius: 15px; padding: 20px; }
+        .card h3 { margin-bottom: 15px; color: var(--primary); }
+        textarea, input { width: 100%; padding: 10px; background: rgba(255, 255, 255, 0.05); border: 1px solid var(--border); border-radius: 8px; color: #c7ff9e; font-family: 'Courier New', monospace; font-size: 13px; margin-bottom: 10px; }
+        button { background: linear-gradient(135deg, var(--primary), var(--accent)); border: none; color: white; padding: 10px 20px; border-radius: 8px; cursor: pointer; font-weight: 600; }
+        button:hover { box-shadow: 0 0 20px rgba(0, 217, 255, 0.5); }
+        .scripts-list { display: grid; gap: 10px; }
+        .script-item { background: rgba(255, 255, 255, 0.03); border: 1px solid var(--border); padding: 15px; border-radius: 10px; }
+        .script-item strong { color: var(--primary); display: block; margin-bottom: 5px; }
+        .script-item code { background: rgba(0, 0, 0, 0.3); padding: 2px 6px; border-radius: 4px; color: #c7ff9e; font-size: 12px; }
+        pre { background: rgba(0, 0, 0, 0.5); border: 1px solid var(--border); padding: 15px; border-radius: 8px; color: #c7ff9e; overflow-x: auto; margin-top: 10px; }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <div class="header">
+            <h1 class="page-title"><i class="fas fa-code"></i> Custom Scripts</h1>
+            <a href="/" class="back-btn"><i class="fas fa-arrow-left"></i> Back</a>
+        </div>
+        <div class="grid">
+            <div class="card">
+                <h3>Upload/Create Script</h3>
+                <input type="text" id="scriptName" placeholder="Script name (e.g., scraper.py)">
+                <textarea id="scriptCode" rows="12" placeholder="Paste script code here (Python, Bash, etc.)"></textarea>
+                <button onclick="saveScript()"><i class="fas fa-save"></i> Save Script</button>
+            </div>
+            <div class="card">
+                <h3>Execute Script</h3>
+                <div style="margin-bottom: 10px;">
+                    <label style="display: block; margin-bottom: 6px; color: var(--text-secondary); font-size: 12px;">Select Script</label>
+                    <select id="scriptSelect" style="width: 100%; padding: 10px; border-radius: 8px;">
+                        <option>Loading scripts...</option>
+                    </select>
+                </div>
+                <div style="margin-bottom: 10px;">
+                    <label style="display: block; margin-bottom: 6px; color: var(--text-secondary); font-size: 12px;">Arguments</label>
+                    <input type="text" id="scriptArgs" placeholder="Optional arguments">
+                </div>
+                <button onclick="runScript()"><i class="fas fa-play"></i> Execute</button>
+                <button class="secondary" onclick="deleteScript()" style="background: rgba(255, 0, 110, 0.3); margin-left: 10px;"><i class="fas fa-trash"></i> Delete</button>
+            </div>
+        </div>
+        <div class="card">
+            <h3>Saved Scripts</h3>
+            <div class="scripts-list" id="scriptsList"></div>
+        </div>
+        <div class="card" style="margin-top: 20px;">
+            <h3>Execution Output</h3>
+            <pre id="output" style="color: #c7ff9e; min-height: 150px;">Ready for execution...</pre>
+        </div>
+    </div>
+    <script>
+        const socket = io();
+        let scripts = [];
+
+        function loadScripts() {
+            fetch('/api/scripts').then(r => r.json()).then(data => {
+                scripts = data.scripts || [];
+                renderScripts();
+                updateScriptSelect();
+            }).catch(() => {});
+        }
+
+        function renderScripts() {
+            const html = scripts.map(s => `
+                <div class="script-item">
+                    <strong>${s.name}</strong>
+                    <code>${s.size} bytes • ${s.created}</code>
+                </div>
+            `).join('');
+            document.getElementById('scriptsList').innerHTML = html || '<p style="color: var(--text-secondary);">No scripts yet</p>';
+        }
+
+        function updateScriptSelect() {
+            const select = document.getElementById('scriptSelect');
+            select.innerHTML = scripts.map(s => `<option value="${s.name}">${s.name}</option>`).join('');
+        }
+
+        function saveScript() {
+            const name = document.getElementById('scriptName').value.trim();
+            const code = document.getElementById('scriptCode').value;
+            if (!name || !code) { alert('Name and code required'); return; }
+            fetch('/api/scripts', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ name, code }) })
+                .then(r => r.json()).then(res => { if (res.success) { loadScripts(); document.getElementById('scriptName').value = ''; document.getElementById('scriptCode').value = ''; } });
+        }
+
+        function runScript() {
+            const name = document.getElementById('scriptSelect').value;
+            const args = document.getElementById('scriptArgs').value;
+            fetch('/api/scripts/run', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ name, args }) })
+                .then(r => r.json()).then(res => {
+                    const output = document.getElementById('output');
+                    if (res.success) {
+                        output.textContent = res.stdout || '(no output)';
+                    } else {
+                        output.textContent = `Error: ${res.error || res.stderr}`;
+                    }
+                });
+        }
+
+        function deleteScript() {
+            const name = document.getElementById('scriptSelect').value;
+            if (confirm(`Delete ${name}?`)) {
+                fetch(`/api/scripts/${name}`, { method: 'DELETE' }).then(() => loadScripts());
+            }
+        }
+
+        socket.on('script_executed', () => {});
+        loadScripts();
+    </script>
+</body>
+</html>
