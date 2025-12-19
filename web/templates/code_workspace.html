@@ -1,0 +1,142 @@
+<!doctype html>
+<html>
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>Athena Code Workspace</title>
+  <style>
+    body { background:#0b0e17; color:#e8f1ff; font-family: "Segoe UI", sans-serif; margin:0; padding:0; }
+    header { padding:16px 24px; border-bottom:1px solid #1f2533; display:flex; justify-content:space-between; align-items:center; }
+    .grid { display:grid; grid-template-columns: 280px 1fr; height: calc(100vh - 64px); }
+    .sidebar { border-right:1px solid #1f2533; padding:12px; overflow:auto; }
+    .main { display:grid; grid-template-rows: 1fr 220px; }
+    .editor-wrap { padding:12px; border-bottom:1px solid #1f2533; }
+    .console { padding:12px; background:#0f1422; }
+    textarea, input, select { width:100%; background:#101828; color:#e8f1ff; border:1px solid #1f2533; border-radius:6px; padding:10px; box-sizing:border-box; }
+    button { background:#2563eb; color:#fff; border:none; padding:10px 14px; border-radius:6px; cursor:pointer; }
+    button.secondary { background:#1f2937; }
+    button:disabled { opacity:0.6; cursor:not-allowed; }
+    .row { display:flex; gap:8px; align-items:center; margin-top:8px; }
+    .file { padding:6px 4px; cursor:pointer; border-radius:4px; }
+    .file:hover { background:#182033; }
+    .muted { color:#8ea0c2; font-size:12px; }
+    pre { white-space: pre-wrap; background:#0d1220; border:1px solid #1f2533; padding:10px; border-radius:6px; color:#c7ff9e; }
+  </style>
+</head>
+<body>
+  <header>
+    <div>
+      <div style="font-size:18px; font-weight:600;">Athena Code Workspace</div>
+      <div class="muted">Sandboxed edits under /opt/agent/workdir</div>
+    </div>
+    <div class="row" style="margin:0;">
+      <button onclick="loadTree()">Refresh Tree</button>
+    </div>
+  </header>
+  <div class="grid">
+    <div class="sidebar">
+      <div class="muted">Files</div>
+      <div id="tree"></div>
+    </div>
+    <div class="main">
+      <div class="editor-wrap">
+        <div class="row">
+          <input id="path" placeholder="Relative path" />
+          <button class="secondary" onclick="readFile()">Open</button>
+        </div>
+        <div class="row">
+          <textarea id="content" rows="14" placeholder="File content"></textarea>
+        </div>
+        <div class="row">
+          <textarea id="instruction" rows="3" placeholder="Instruction for AI (e.g., Refactor, add logging)"></textarea>
+        </div>
+        <div class="row">
+          <button onclick="proposeEdit()">Propose with AI</button>
+          <button class="secondary" onclick="applyEdit()">Apply (manual)</button>
+        </div>
+      </div>
+      <div class="console">
+        <div class="row">
+          <input id="cmd" placeholder="Allowed commands only (ls, cat, python ...)" />
+          <button class="secondary" onclick="runCmd()">Run</button>
+        </div>
+        <div class="muted" style="margin-top:6px;">Output</div>
+        <pre id="log"></pre>
+      </div>
+    </div>
+  </div>
+
+<script>
+async function loadTree(path="") {
+  const res = await fetch(`/api/ws/files?path=${encodeURIComponent(path)}`);
+  const data = await res.json();
+  if (!data.success) { document.getElementById('tree').textContent = 'Error: ' + data.error; return; }
+  const items = data.items || [];
+  const html = items.map(item => `<div class="file" onclick="onSelect('${path ? path + '/' : ''}${item.name}', ${item.is_dir})">${item.is_dir ? '📁' : '📄'} ${item.name}</div>`).join('');
+  document.getElementById('tree').innerHTML = html || '<div class="muted">Empty</div>';
+}
+
+async function onSelect(p, isDir) {
+  document.getElementById('path').value = p;
+  if (!isDir) { readFile(); }
+  else { loadTree(p); }
+}
+
+async function readFile() {
+  const path = document.getElementById('path').value.trim();
+  const res = await fetch(`/api/ws/file?path=${encodeURIComponent(path)}`);
+  const data = await res.json();
+  if (!data.success) { log('Error: ' + data.error); return; }
+  document.getElementById('content').value = data.content || '';
+  log(`Loaded ${path}`);
+}
+
+async function proposeEdit() {
+  const path = document.getElementById('path').value.trim();
+  const instruction = document.getElementById('instruction').value.trim();
+  if (!path || !instruction) { log('Path and instruction required'); return; }
+  log('Requesting AI proposal...');
+  const res = await fetch('/api/ws/edit-propose', {
+    method: 'POST', headers: {'Content-Type':'application/json'},
+    body: JSON.stringify({ path, instruction })
+  });
+  const data = await res.json();
+  if (!data.success) { log('Error: ' + data.error); return; }
+  document.getElementById('content').value = data.proposed || '';
+  log('AI proposal ready. Review and click Apply.');
+}
+
+async function applyEdit() {
+  const path = document.getElementById('path').value.trim();
+  const new_content = document.getElementById('content').value;
+  if (!path) { log('Path required'); return; }
+  const res = await fetch('/api/ws/edit-apply', {
+    method: 'POST', headers: {'Content-Type':'application/json'},
+    body: JSON.stringify({ path, new_content })
+  });
+  const data = await res.json();
+  if (!data.success) { log('Error: ' + data.error); return; }
+  log('Applied changes to ' + path);
+}
+
+async function runCmd() {
+  const cmd = document.getElementById('cmd').value.trim();
+  if (!cmd) { log('Command required'); return; }
+  const res = await fetch('/api/ws/run', {
+    method: 'POST', headers: {'Content-Type':'application/json'},
+    body: JSON.stringify({ cmd })
+  });
+  const data = await res.json();
+  if (!data.success) { log('Error: ' + (data.error || data.stderr)); return; }
+  log(`$ ${cmd}\n${data.stdout || ''}\n${data.stderr || ''}`);
+}
+
+function log(msg) {
+  const el = document.getElementById('log');
+  el.textContent = msg;
+}
+
+loadTree();
+</script>
+</body>
+</html>

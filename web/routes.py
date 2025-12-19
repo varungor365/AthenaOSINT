@@ -33,6 +33,8 @@ from automation_suite.api import (
     get_config as auto_get_config,
     update_config as auto_update_config,
 )
+from agent import brain_agent
+from agent import workspace
 
 # Initialize app FIRST
 app, socketio = create_app()
@@ -192,6 +194,121 @@ def automation_config():
             return jsonify(auto_update_config(payload))
     except Exception as e:
         return jsonify({'success': False, 'error': str(e)}), 400
+
+
+@app.route('/code-workspace')
+@login_required
+def code_workspace():
+    return render_template('code_workspace.html')
+
+
+# Agent task runner (manual/auto with allowlist + sandboxed executor)
+@app.route('/api/agent/tasks', methods=['GET', 'POST'])
+def agent_tasks():
+    try:
+        if request.method == 'GET':
+            return jsonify({"success": True, "tasks": brain_agent.list_tasks()})
+        payload = request.get_json() or {}
+        prompt = payload.get('prompt', '').strip()
+        mode = payload.get('mode', 'manual')
+        if not prompt:
+            return jsonify({"success": False, "error": "prompt required"}), 400
+        task = brain_agent.create_task(prompt, mode)
+        if mode == 'auto':
+            brain_agent.run_task(task['id'], auto_run=True)
+            task = brain_agent.get_task(task['id'])
+        return jsonify({"success": True, "task": task})
+    except Exception as e:
+        return jsonify({"success": False, "error": str(e)}), 500
+
+
+@app.route('/api/agent/tasks/<task_id>', methods=['GET'])
+def agent_task_detail(task_id):
+    try:
+        task = brain_agent.get_task(task_id)
+        if not task:
+            return jsonify({"success": False, "error": "not found"}), 404
+        return jsonify({"success": True, "task": task})
+    except Exception as e:
+        return jsonify({"success": False, "error": str(e)}), 500
+
+
+@app.route('/api/agent/tasks/<task_id>/approve', methods=['POST'])
+def agent_task_approve(task_id):
+    try:
+        resp = brain_agent.approve_task(task_id)
+        if not resp.get('success'):
+            return jsonify(resp), 400
+        brain_agent.run_task(task_id, auto_run=True)
+        return jsonify(brain_agent.get_task(task_id))
+    except Exception as e:
+        return jsonify({"success": False, "error": str(e)}), 500
+
+
+@app.route('/api/agent/tasks/<task_id>/run', methods=['POST'])
+def agent_task_run(task_id):
+    try:
+        result = brain_agent.run_task(task_id, auto_run=True)
+        return jsonify(result)
+    except Exception as e:
+        return jsonify({"success": False, "error": str(e)}), 500
+
+
+# Code workspace APIs
+@app.route('/api/ws/files', methods=['GET'])
+def ws_list_files():
+    rel_path = request.args.get('path', '')
+    try:
+        return jsonify(workspace.list_files(rel_path))
+    except Exception as e:
+        return jsonify({"success": False, "error": str(e)}), 400
+
+
+@app.route('/api/ws/file', methods=['GET'])
+def ws_read_file():
+    rel_path = request.args.get('path', '')
+    try:
+        return jsonify(workspace.read_file(rel_path))
+    except Exception as e:
+        return jsonify({"success": False, "error": str(e)}), 400
+
+
+@app.route('/api/ws/edit-propose', methods=['POST'])
+def ws_edit_propose():
+    payload = request.get_json() or {}
+    rel_path = payload.get('path', '')
+    instruction = payload.get('instruction', '')
+    if not rel_path or not instruction:
+        return jsonify({"success": False, "error": "path and instruction required"}), 400
+    try:
+        return jsonify(workspace.propose_edit(rel_path, instruction))
+    except Exception as e:
+        return jsonify({"success": False, "error": str(e)}), 400
+
+
+@app.route('/api/ws/edit-apply', methods=['POST'])
+def ws_edit_apply():
+    payload = request.get_json() or {}
+    rel_path = payload.get('path', '')
+    new_content = payload.get('new_content', '')
+    if not rel_path or new_content is None:
+        return jsonify({"success": False, "error": "path and new_content required"}), 400
+    try:
+        return jsonify(workspace.apply_edit(rel_path, new_content))
+    except Exception as e:
+        return jsonify({"success": False, "error": str(e)}), 400
+
+
+@app.route('/api/ws/run', methods=['POST'])
+def ws_run_cmd():
+    payload = request.get_json() or {}
+    cmd = payload.get('cmd', '')
+    if not cmd:
+        return jsonify({"success": False, "error": "cmd required"}), 400
+    try:
+        return jsonify(workspace.run_command(cmd))
+    except Exception as e:
+        return jsonify({"success": False, "error": str(e)}), 400
 
 
 # ... imports ...
