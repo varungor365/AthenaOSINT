@@ -23,7 +23,7 @@ pyautogen
 scrapegraphai
 playwright
 ragas
-datasets>=4.12.2
+datasets>=2.14.0
 pysocks
 onionsearch
 firecrawl-py

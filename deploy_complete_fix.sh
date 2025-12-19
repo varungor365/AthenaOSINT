@@ -48,7 +48,7 @@ pip install -r requirements.txt --quiet || log_error "Dependency installation fa
 
 # 4. Install Playwright Browsers
 log_info "Installing Playwright browsers..."
-playwright install chromium --quiet || log_warn "Playwright install failed (may already be installed)"
+playwright install chromium > /dev/null 2>&1 || log_warn "Playwright install failed (may already be installed)"
 
 # 5. Create Required Directories
 log_info "Creating directory structure..."

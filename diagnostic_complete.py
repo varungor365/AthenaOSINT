@@ -298,7 +298,7 @@ class SystemDiagnostic:
             
             for target, expected_type in test_cases:
                 detected = detect_target_type(target)
-                is_valid = validate_target(target, detected)
+                is_valid = validate_target(target)  # Fixed: only takes 1 argument
                 
                 if is_valid and detected == expected_type:
                     self.log(f"Validator {expected_type}: OK", 'INFO')
@@ -321,14 +321,15 @@ class SystemDiagnostic:
             rotator = APIRotator()
             stats = rotator.get_all_stats()
             
-            total_keys = sum(len(s['keys']) for s in stats.values())
-            self.log(f"API Rotator: OK ({total_keys} keys configured)", 'INFO')
+            # Count services with keys
+            total_services = len(stats) if stats else 0
+            self.log(f"API Rotator: OK ({total_services} services configured)", 'INFO')
             self.results['tests_passed'] += 1
             
             # Check for configured services
             if stats:
                 for service, data in list(stats.items())[:5]:
-                    key_count = len(data['keys'])
+                    key_count = data.get('total_keys', 0)
                     self.log(f"  {service}: {key_count} key(s)", 'INFO')
                     
         except Exception as e:
