@@ -1,0 +1,335 @@
+{% extends "base.html" %}
+
+{% block content %}
+<div class="row mb-4">
+    <div class="col-md-12">
+        <div class="card bg-dark text-white border-success">
+            <div class="card-body p-4">
+                <div class="d-flex justify-content-between align-items-center">
+                    <div>
+                        <h1 class="display-5 fw-bold text-success">24/7 BACKGROUND HARVESTER 🤖</h1>
+                        <p class="lead mb-0">Autonomous OSINT Collection & Threat Monitoring</p>
+                    </div>
+                    <div class="text-end">
+                        <span class="badge bg-success mb-2" id="status-badge">Checking...</span>
+                        <br>
+                        <button class="btn btn-sm btn-success" id="start-btn" onclick="startHarvester()">Start</button>
+                        <button class="btn btn-sm btn-danger" id="stop-btn" onclick="stopHarvester()">Stop</button>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<div class="row">
+    <!-- Statistics -->
+    <div class="col-md-3">
+        <div class="card mb-3">
+            <div class="card-body text-center">
+                <h5>Tasks Completed</h5>
+                <h2 class="text-primary" id="stat-tasks">0</h2>
+            </div>
+        </div>
+    </div>
+    <div class="col-md-3">
+        <div class="card mb-3">
+            <div class="card-body text-center">
+                <h5>Threats Found</h5>
+                <h2 class="text-danger" id="stat-threats">0</h2>
+            </div>
+        </div>
+    </div>
+    <div class="col-md-3">
+        <div class="card mb-3">
+            <div class="card-body text-center">
+                <h5>Data Harvested</h5>
+                <h2 class="text-info" id="stat-data">0 MB</h2>
+            </div>
+        </div>
+    </div>
+    <div class="col-md-3">
+        <div class="card mb-3">
+            <div class="card-body text-center">
+                <h5>Uptime</h5>
+                <h2 class="text-success" id="stat-uptime">0h</h2>
+            </div>
+        </div>
+    </div>
+</div>
+
+<div class="row">
+    <!-- Watchlist -->
+    <div class="col-md-4">
+        <div class="card mb-4">
+            <div class="card-header bg-secondary text-white fw-bold">
+                <i class="bi bi-list-check"></i> Watchlist
+            </div>
+            <div class="card-body">
+                <form id="add-target-form" class="mb-3">
+                    <div class="mb-2">
+                        <select class="form-select form-select-sm" id="target-type" required>
+                            <option value="">Select Type...</option>
+                            <option value="domain">Domain</option>
+                            <option value="email">Email</option>
+                            <option value="username">Username</option>
+                            <option value="keyword">Keyword</option>
+                        </select>
+                    </div>
+                    <div class="input-group">
+                        <input type="text" id="target-value" class="form-control" placeholder="Target value" required>
+                        <button class="btn btn-primary" type="submit">Add</button>
+                    </div>
+                </form>
+
+                <h6 class="text-muted mt-4">Domains (<span id="count-domains">0</span>)</h6>
+                <ul class="list-group list-group-flush mb-3" id="list-domains"></ul>
+
+                <h6 class="text-muted">Emails (<span id="count-emails">0</span>)</h6>
+                <ul class="list-group list-group-flush mb-3" id="list-emails"></ul>
+
+                <h6 class="text-muted">Usernames (<span id="count-usernames">0</span>)</h6>
+                <ul class="list-group list-group-flush mb-3" id="list-usernames"></ul>
+
+                <h6 class="text-muted">Keywords (<span id="count-keywords">0</span>)</h6>
+                <ul class="list-group list-group-flush" id="list-keywords"></ul>
+            </div>
+        </div>
+    </div>
+
+    <!-- Alerts Feed -->
+    <div class="col-md-8">
+        <div class="card">
+            <div class="card-header bg-danger text-white fw-bold">
+                <i class="bi bi-exclamation-triangle"></i> Recent Alerts
+            </div>
+            <div class="card-body p-0" style="max-height: 600px; overflow-y: auto;">
+                <div class="list-group list-group-flush" id="alerts-feed">
+                    <div class="text-center p-5 text-muted">
+                        <i class="bi bi-info-circle display-4"></i>
+                        <p class="mt-3">No alerts yet. Harvester will display threats here.</p>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<div class="row mt-4">
+    <!-- Configuration -->
+    <div class="col-md-12">
+        <div class="card">
+            <div class="card-header bg-dark text-white fw-bold">
+                <i class="bi bi-gear"></i> Task Configuration
+            </div>
+            <div class="card-body">
+                <div class="row">
+                    <div class="col-md-4">
+                        <div class="form-check form-switch">
+                            <input class="form-check-input" type="checkbox" id="task-breach" checked>
+                            <label class="form-check-label" for="task-breach">Breach Monitoring</label>
+                        </div>
+                        <div class="form-check form-switch">
+                            <input class="form-check-input" type="checkbox" id="task-subdomain" checked>
+                            <label class="form-check-label" for="task-subdomain">Subdomain Discovery</label>
+                        </div>
+                        <div class="form-check form-switch">
+                            <input class="form-check-input" type="checkbox" id="task-leak" checked>
+                            <label class="form-check-label" for="task-leak">Leak Scanning</label>
+                        </div>
+                    </div>
+                    <div class="col-md-4">
+                        <div class="form-check form-switch">
+                            <input class="form-check-input" type="checkbox" id="task-ssl" checked>
+                            <label class="form-check-label" for="task-ssl">SSL Monitoring</label>
+                        </div>
+                        <div class="form-check form-switch">
+                            <input class="form-check-input" type="checkbox" id="task-vuln" checked>
+                            <label class="form-check-label" for="task-vuln">Vulnerability Scanning</label>
+                        </div>
+                        <div class="form-check form-switch">
+                            <input class="form-check-input" type="checkbox" id="task-social" checked>
+                            <label class="form-check-label" for="task-social">Social Media Scraping</label>
+                        </div>
+                    </div>
+                    <div class="col-md-4">
+                        <div class="form-check form-switch">
+                            <input class="form-check-input" type="checkbox" id="task-github" checked>
+                            <label class="form-check-label" for="task-github">GitHub Secrets</label>
+                        </div>
+                        <div class="form-check form-switch">
+                            <input class="form-check-input" type="checkbox" id="task-pastebin" checked>
+                            <label class="form-check-label" for="task-pastebin">Pastebin Monitoring</label>
+                        </div>
+                        <div class="mb-2">
+                            <label class="form-label">Check Interval (minutes)</label>
+                            <input type="number" class="form-control form-control-sm" id="interval" value="30" min="5">
+                        </div>
+                    </div>
+                </div>
+                <button class="btn btn-primary mt-3" onclick="saveConfig()">Save Configuration</button>
+            </div>
+        </div>
+    </div>
+</div>
+
+<script>
+$(document).ready(function() {
+    loadStatus();
+    loadConfig();
+    loadAlerts();
+    
+    // Auto-refresh every 10 seconds
+    setInterval(loadStatus, 10000);
+    setInterval(loadAlerts, 30000);
+    
+    // Add target form
+    $('#add-target-form').submit(function(e) {
+        e.preventDefault();
+        const type = $('#target-type').val();
+        const target = $('#target-value').val();
+        
+        $.post('/api/harvester/add-target', JSON.stringify({type, target}), function(res) {
+            alert('Target added to watchlist');
+            $('#target-value').val('');
+            loadConfig();
+        }, 'json').fail(function() { alert('Failed to add target'); });
+    });
+});
+
+function loadStatus() {
+    $.get('/api/harvester/status', function(data) {
+        if (data.success) {
+            const stats = data.stats;
+            $('#stat-tasks').text(stats.tasks_completed || 0);
+            $('#stat-threats').text(stats.threats_found || 0);
+            $('#stat-data').text((stats.data_harvested_mb || 0).toFixed(2) + ' MB');
+            $('#stat-uptime').text((stats.uptime_hours || 0).toFixed(1) + 'h');
+            
+            if (stats.running) {
+                $('#status-badge').removeClass('bg-danger').addClass('bg-success').text('Running');
+                $('#start-btn').prop('disabled', true);
+                $('#stop-btn').prop('disabled', false);
+            } else {
+                $('#status-badge').removeClass('bg-success').addClass('bg-danger').text('Stopped');
+                $('#start-btn').prop('disabled', false);
+                $('#stop-btn').prop('disabled', true);
+            }
+        }
+    });
+}
+
+function loadConfig() {
+    $.get('/api/harvester/config', function(data) {
+        if (data.success) {
+            const config = data.config;
+            
+            // Update watchlists
+            updateList('domains', config.watchlist_domains || []);
+            updateList('emails', config.watchlist_emails || []);
+            updateList('usernames', config.watchlist_usernames || []);
+            updateList('keywords', config.watchlist_keywords || []);
+            
+            // Update task checkboxes
+            if (config.tasks) {
+                $('#task-breach').prop('checked', config.tasks.breach_monitoring);
+                $('#task-subdomain').prop('checked', config.tasks.subdomain_discovery);
+                $('#task-leak').prop('checked', config.tasks.leak_scanning);
+                $('#task-ssl').prop('checked', config.tasks.ssl_monitoring);
+                $('#task-vuln').prop('checked', config.tasks.vulnerability_scanning);
+                $('#task-social').prop('checked', config.tasks.social_scraping);
+                $('#task-github').prop('checked', config.tasks.github_secrets);
+                $('#task-pastebin').prop('checked', config.tasks.pastebin_monitoring);
+            }
+            
+            $('#interval').val(config.interval_minutes || 30);
+        }
+    });
+}
+
+function updateList(type, items) {
+    const list = $(`#list-${type}`);
+    const count = $(`#count-${type}`);
+    
+    list.empty();
+    count.text(items.length);
+    
+    items.forEach(item => {
+        list.append(`<li class="list-group-item py-1"><small>${item}</small></li>`);
+    });
+}
+
+function loadAlerts() {
+    $.get('/api/harvester/alerts', function(data) {
+        if (data.success && data.alerts.length > 0) {
+            const feed = $('#alerts-feed');
+            feed.empty();
+            
+            data.alerts.forEach(alert => {
+                const badge = alert.severity === 'critical' ? 'danger' : 
+                             alert.severity === 'high' ? 'warning' : 'info';
+                const icon = alert.severity === 'critical' ? 'exclamation-triangle' : 
+                            alert.severity === 'high' ? 'exclamation-circle' : 'info-circle';
+                
+                feed.append(`
+                    <div class="list-group-item">
+                        <div class="d-flex justify-content-between">
+                            <h6><i class="bi bi-${icon} text-${badge}"></i> ${alert.title}</h6>
+                            <small class="text-muted">${new Date(alert.timestamp).toLocaleString()}</small>
+                        </div>
+                        <p class="mb-0"><small>${alert.details}</small></p>
+                    </div>
+                `);
+            });
+        }
+    });
+}
+
+function startHarvester() {
+    if (confirm('Start 24/7 background harvester?')) {
+        $.post('/api/harvester/start', JSON.stringify({workers: 4}), function(res) {
+            alert(res.message);
+            loadStatus();
+        }, 'json').fail(function() { alert('Failed to start harvester'); });
+    }
+}
+
+function stopHarvester() {
+    if (confirm('Stop background harvester?')) {
+        $.post('/api/harvester/stop', '{}', function(res) {
+            alert(res.message);
+            loadStatus();
+        }, 'json').fail(function() { alert('Failed to stop harvester'); });
+    }
+}
+
+function saveConfig() {
+    const config = {
+        interval_minutes: parseInt($('#interval').val()),
+        tasks: {
+            breach_monitoring: $('#task-breach').is(':checked'),
+            subdomain_discovery: $('#task-subdomain').is(':checked'),
+            leak_scanning: $('#task-leak').is(':checked'),
+            ssl_monitoring: $('#task-ssl').is(':checked'),
+            vulnerability_scanning: $('#task-vuln').is(':checked'),
+            social_scraping: $('#task-social').is(':checked'),
+            github_secrets: $('#task-github').is(':checked'),
+            pastebin_monitoring: $('#task-pastebin').is(':checked'),
+        }
+    };
+    
+    $.ajax({
+        url: '/api/harvester/config',
+        method: 'PUT',
+        contentType: 'application/json',
+        data: JSON.stringify(config),
+        success: function(res) {
+            alert('Configuration saved');
+        },
+        error: function() {
+            alert('Failed to save configuration');
+        }
+    });
+}
+</script>
+{% endblock %}

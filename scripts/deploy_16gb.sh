@@ -229,6 +229,19 @@ echo -n "RAM usage: "
 free -h | grep Mem | awk '{print $3}'
 
 echo ""
+echo -e "${YELLOW}[9/9] Setting up 24/7 Background Harvester...${NC}"
+# Copy and enable harvester service
+sudo cp "$PROJECT_DIR/athena-harvester.service" /etc/systemd/system/
+sudo systemctl daemon-reload
+sudo systemctl enable athena-harvester
+
+# Start harvester (optional - can be started from dashboard)
+echo "Note: Harvester service installed but not started."
+echo "Start it from the dashboard at /harvester or run:"
+echo "  sudo systemctl start athena-harvester"
+echo -e "${GREEN}✓ Harvester service ready${NC}"
+
+echo ""
 echo -e "${GREEN}🚀 AthenaOSINT v3.0 is now running with:${NC}"
 echo "  • 13B parameter uncensored LLM"
 echo "  • 12 concurrent Flask workers"
@@ -236,10 +249,15 @@ echo "  • 8K context window"
 echo "  • Parallel scan engine"
 echo "  • AI-powered Sentinel monitoring"
 echo "  • Intelligent caching system"
+echo "  • 24/7 Background Harvester (ready to start)"
 echo ""
 echo -e "${YELLOW}Access dashboard: http://$(curl -s ifconfig.me)${NC}"
+echo "  • Main Dashboard: /"
+echo "  • Sentinel Mode: /sentinel"
+echo "  • 24/7 Harvester: /harvester"
 echo ""
 echo "Logs:"
 echo "  • Flask: journalctl -u athena-web -f"
 echo "  • Orchestrator: journalctl -u agent-orchestrator -f"
+echo "  • Harvester: journalctl -u athena-harvester -f"
 echo ""

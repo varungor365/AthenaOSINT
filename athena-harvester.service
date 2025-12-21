@@ -1,0 +1,25 @@
+[Unit]
+Description=AthenaOSINT 24/7 Background Harvester
+After=network.target
+
+[Service]
+Type=simple
+User=root
+WorkingDirectory=/root/AthenaOSINT
+Environment="PATH=/root/AthenaOSINT/venv/bin:/usr/local/bin:/usr/bin:/bin"
+Environment="PYTHONUNBUFFERED=1"
+ExecStart=/root/AthenaOSINT/venv/bin/python3 /root/AthenaOSINT/run_harvester.py
+Restart=always
+RestartSec=10
+StandardOutput=journal
+StandardError=journal
+SyslogIdentifier=athena-harvester
+
+# Resource limits
+LimitNOFILE=10000
+LimitNPROC=1000
+CPUQuota=60%
+MemoryLimit=2G
+
+[Install]
+WantedBy=multi-user.target

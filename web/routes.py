@@ -1623,6 +1623,169 @@ def sentinel_get_alerts():
         logger.error(f"Failed to load alerts: {e}")
         return jsonify({'success': False, 'error': str(e)}), 500
 
+# ============================================================================
+# 24/7 BACKGROUND HARVESTER - Autonomous OSINT Collection
+# ============================================================================
+
+@app.route('/harvester')
+@login_required
+def harvester_dashboard():
+    """Render 24/7 harvester dashboard."""
+    return render_template('harvester.html')
+
+@app.route('/api/harvester/start', methods=['POST'])
+@login_required
+def harvester_start():
+    """Start the background harvester."""
+    try:
+        from core.background_harvester import get_harvester
+        
+        harvester = get_harvester()
+        num_workers = request.json.get('workers', 4) if request.is_json else 4
+        
+        harvester.start(num_workers=num_workers)
+        
+        return jsonify({'success': True, 'message': f'Harvester started with {num_workers} workers'})
+    except Exception as e:
+        logger.error(f"Failed to start harvester: {e}")
+        return jsonify({'success': False, 'error': str(e)}), 500
+
+@app.route('/api/harvester/stop', methods=['POST'])
+@login_required
+def harvester_stop():
+    """Stop the background harvester."""
+    try:
+        from core.background_harvester import get_harvester
+        
+        harvester = get_harvester()
+        harvester.stop()
+        
+        return jsonify({'success': True, 'message': 'Harvester stopped'})
+    except Exception as e:
+        logger.error(f"Failed to stop harvester: {e}")
+        return jsonify({'success': False, 'error': str(e)}), 500
+
+@app.route('/api/harvester/status', methods=['GET'])
+@login_required
+def harvester_status():
+    """Get harvester status and statistics."""
+    try:
+        from core.background_harvester import get_harvester
+        
+        harvester = get_harvester()
+        stats = harvester.get_stats()
+        
+        return jsonify({'success': True, 'stats': stats})
+    except Exception as e:
+        logger.error(f"Failed to get harvester status: {e}")
+        return jsonify({'success': False, 'error': str(e)}), 500
+
+@app.route('/api/harvester/config', methods=['GET', 'PUT'])
+@login_required
+def harvester_config():
+    """Get or update harvester configuration."""
+    try:
+        from core.background_harvester import get_harvester
+        
+        harvester = get_harvester()
+        
+        if request.method == 'GET':
+            return jsonify({'success': True, 'config': harvester.config})
+        
+        else:  # PUT
+            data = request.get_json()
+            
+            # Update config
+            harvester.config.update(data)
+            harvester._save_config()
+            
+            return jsonify({'success': True, 'message': 'Configuration updated'})
+    
+    except Exception as e:
+        logger.error(f"Failed to manage harvester config: {e}")
+        return jsonify({'success': False, 'error': str(e)}), 500
+
+@app.route('/api/harvester/add-target', methods=['POST'])
+@login_required
+def harvester_add_target():
+    """Add a target to watchlist."""
+    try:
+        from core.background_harvester import get_harvester
+        
+        data = request.get_json() or request.form.to_dict()
+        target_type = data.get('type')  # domain, email, username, keyword
+        target = data.get('target')
+        
+        if not target_type or not target:
+            return jsonify({'success': False, 'error': 'Missing type or target'}), 400
+        
+        harvester = get_harvester()
+        harvester.add_target(target_type, target)
+        
+        return jsonify({'success': True, 'message': f'Added {target} to {target_type} watchlist'})
+    
+    except Exception as e:
+        logger.error(f"Failed to add target: {e}")
+        return jsonify({'success': False, 'error': str(e)}), 500
+
+@app.route('/api/harvester/results', methods=['GET'])
+@login_required
+def harvester_results():
+    """Get recent harvester results."""
+    try:
+        from pathlib import Path
+        import json
+        
+        results_dir = Path('data/harvester_results')
+        results_dir.mkdir(parents=True, exist_ok=True)
+        
+        # Get recent result files (last 50)
+        result_files = sorted(results_dir.glob('*.json'), key=lambda p: p.stat().st_mtime, reverse=True)[:50]
+        
+        results = []
+        for file in result_files:
+            try:
+                with open(file, 'r') as f:
+                    result = json.load(f)
+                    results.append(result)
+            except:
+                pass
+        
+        return jsonify({'success': True, 'results': results, 'total': len(results)})
+    
+    except Exception as e:
+        logger.error(f"Failed to get harvester results: {e}")
+        return jsonify({'success': False, 'error': str(e)}), 500
+
+@app.route('/api/harvester/alerts', methods=['GET'])
+@login_required
+def harvester_alerts():
+    """Get harvester alerts."""
+    try:
+        from pathlib import Path
+        import json
+        
+        results_dir = Path('data/harvester_results')
+        results_dir.mkdir(parents=True, exist_ok=True)
+        
+        # Get alert files
+        alert_files = sorted(results_dir.glob('alert_*.json'), key=lambda p: p.stat().st_mtime, reverse=True)[:30]
+        
+        alerts = []
+        for file in alert_files:
+            try:
+                with open(file, 'r') as f:
+                    alert = json.load(f)
+                    alerts.append(alert)
+            except:
+                pass
+        
+        return jsonify({'success': True, 'alerts': alerts, 'total': len(alerts)})
+    
+    except Exception as e:
+        logger.error(f"Failed to get harvester alerts: {e}")
+        return jsonify({'success': False, 'error': str(e)}), 500
+
 if __name__ == '__main__':
     # This is for development only
     socketio.run(
