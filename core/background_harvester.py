@@ -211,7 +211,8 @@ class BackgroundHarvester:
         }
         
         if not self.config_file.exists():
-            self._save_config(default_config)
+            self.config = default_config
+            self._save_config()
             return default_config
         
         try:
