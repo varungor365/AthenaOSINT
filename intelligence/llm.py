@@ -212,3 +212,34 @@ class LLMClient:
                 return {"error": "Failed to parse AI response", "raw": response_text}
         except Exception as e:
             return {"error": f"JSON parse error: {e}", "raw": response_text}
+
+
+# Global client instance
+_llm_client = None
+
+def get_llm_client() -> LLMClient:
+    """Get or create the global LLM client instance."""
+    global _llm_client
+    if _llm_client is None:
+        _llm_client = LLMClient()
+    return _llm_client
+
+
+def get_llm_response(prompt: str, system: str = None, max_tokens: int = 1000) -> str:
+    """
+    Helper function for quick LLM queries.
+    
+    Args:
+        prompt: The prompt to send to the LLM
+        system: Optional system prompt
+        max_tokens: Maximum tokens in response
+        
+    Returns:
+        str: The LLM's response text
+    """
+    try:
+        client = get_llm_client()
+        return client.generate_text(prompt=prompt, system_prompt=system)
+    except Exception as e:
+        logger.error(f"LLM response failed: {e}")
+        return ""
