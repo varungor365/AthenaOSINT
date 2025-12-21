@@ -39,7 +39,7 @@ TASKS_PATH = Path("data/agent_tasks.json")
 TASKS_PATH.parent.mkdir(parents=True, exist_ok=True)
 
 OLLAMA_URL = os.getenv("AGENT_ORCHESTRATOR_URL", "http://127.0.0.1:8081/api/generate")
-MODEL_NAME = os.getenv("AGENT_MODEL", "wizard-vicuna-uncensored")
+MODEL_NAME = os.getenv("AGENT_MODEL", "dolphin-llama3:8b-256k-v2.9-q5_K_M")
 
 
 def _load_tasks() -> Dict[str, Any]:

@@ -39,7 +39,7 @@ from agent import workspace
 
 # AI orchestrator endpoint (FastAPI/Uvicorn at port 8081)
 AGENT_ORCH_URL = os.getenv("AGENT_ORCHESTRATOR_URL", "http://127.0.0.1:8081/api/generate")
-AGENT_MODEL = os.getenv("AGENT_MODEL", "wizard-vicuna-uncensored:7b")
+AGENT_MODEL = os.getenv("AGENT_MODEL", "dolphin-llama3:8b-256k-v2.9-q5_K_M")
 
 # Initialize app FIRST
 app, socketio = create_app()

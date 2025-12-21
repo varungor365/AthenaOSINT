@@ -36,7 +36,7 @@ SENTINEL_CONFIG = {
 
 # LLM Configuration (16GB RAM - use 13B models)
 LLM_CONFIG = {
-    'model': 'wizard-vicuna-uncensored:13b',
+    'model': 'dolphin-llama3:8b-256k-v2.9-q5_K_M',
     'context_size': 8192,
     'threads': 8,
     'parallel_requests': 4,

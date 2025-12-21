@@ -15,7 +15,7 @@ from pydantic import BaseModel
 app = FastAPI(title="Agent Orchestrator", version="0.1.0")
 
 # Configuration (Optimized for 16GB RAM)
-MODEL_NAME = os.getenv("AGENT_MODEL", "wizard-vicuna-uncensored:13b")  # Larger model
+MODEL_NAME = os.getenv("AGENT_MODEL", "dolphin-llama3:8b-256k-v2.9-q5_K_M")  # Dolphin X1 8B Q5
 CONTEXT_SIZE = int(os.getenv("AGENT_CONTEXT", "8192"))  # 8K context
 NUM_THREADS = int(os.getenv("AGENT_THREADS", "8"))  # Parallel processing
 NUM_PARALLEL = int(os.getenv("AGENT_PARALLEL", "4"))  # Concurrent requests

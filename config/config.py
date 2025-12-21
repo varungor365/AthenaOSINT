@@ -64,7 +64,7 @@ class Config:
             # AI Settings
             'AI_PROVIDER': os.getenv('AI_PROVIDER', 'groq'),  # groq, ollama, openai
             'OLLAMA_HOST': os.getenv('OLLAMA_HOST', 'http://localhost:11434'),
-            'OLLAMA_MODEL': os.getenv('OLLAMA_MODEL', 'llama3:8b'),
+            'OLLAMA_MODEL': os.getenv('OLLAMA_MODEL', 'dolphin-llama3:8b-256k-v2.9-q5_K_M'),
             
             # Database
             # Database
