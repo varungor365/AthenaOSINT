@@ -1481,6 +1481,177 @@ def scripts_delete(name):
     except Exception as e:
         return jsonify({"success": False, "error": str(e)}), 500
 
+# --- Research Mode Routes ---
+
+@app.route('/research')
+@login_required
+def research_view():
+    """Render the Research Situation Room."""
+    return render_template('research.html')
+
+@socketio.on('start_research')
+def handle_research_start(data):
+    """Handle start of a multi-agent investigation."""
+    objective = data.get('objective')
+    if not objective:
+        return
+    
+    logger.info(f"Research requested: {objective}")
+
+    def callback(sender, recipient, message_dict):
+        try:
+            content = message_dict.get('content', '')
+            sender_name = sender.name if hasattr(sender, 'name') else str(sender)
+            
+            # Emit to frontend (socketio emit is thread-safe in Flask-SocketIO)
+            socketio.emit('research_update', {
+                'sender': sender_name,
+                'content': content
+            })
+        except Exception as e:
+            logger.error(f"Socket emit error: {e}")
+
+    def run_wrapper():
+        try:
+            from intelligence.autogen_wrapper import MultiAgentSystem
+            mas = MultiAgentSystem()
+            mas.run_investigation(objective, update_callback=callback)
+            socketio.emit('research_complete', {})
+        except Exception as e:
+            logger.error(f"Research error: {e}")
+            socketio.emit('error', {'msg': str(e)})
+
+    thread = threading.Thread(target=run_wrapper)
+    thread.daemon = True
+    thread.start()
+
+# --- Graph Visualization Routes ---
+
+@app.route('/graph/<scan_id>')
+@login_required
+def graph_view(scan_id):
+    """Render the Graph Visualization."""
+    return render_template('graph.html', scan_id=scan_id)
+
+@app.route('/api/graph/<scan_id>', methods=['GET'])
+@login_required
+def graph_api(scan_id):
+    """Get Graph Data for Vis.js."""
+    try:
+        # Load Scan Data
+        # Re-using the logic from get_scan_details
+        history_file = Path('data/scan_history.json')
+        if not history_file.exists():
+            return jsonify({'success': False, 'error': 'No history'}), 404
+            
+        with open(history_file, 'r') as f:
+            history = json.load(f)
+            
+        scan_data = next((s for s in history if s['scan_id'] == scan_id), None)
+        if not scan_data:
+            return jsonify({'success': False, 'error': 'Scan not found'}), 404
+            
+        # Reconstruct Profile Object (Simplified)
+        from core.engine import Profile
+        # We need a way to restore Profile from JSON. 
+        # For now, we will just manually instantiate and populate from what we saved.
+        # Ideally, Profile should have a .from_dict() method.
+        # Assuming we saved 'full_report' (the Profile.to_dict()) in the JSON?
+        # scan_history usually saves metadata. The full report is in a separate .json file path.
+        
+        report_path = scan_data.get('report_path')
+        if not report_path or not os.path.exists(report_path):
+             return jsonify({'success': False, 'error': 'Report file missing'}), 404
+             
+        with open(report_path, 'r') as f:
+            report_json = json.load(f)
+            
+        # Rehydrate Profile-like structure for the GraphBuilder
+        # Since GraphBuilder expects a Profile object attributes, we can just use a dummy class or dict wrapper
+        # Or better, instantiate Profile and fill it.
+        
+        profile = Profile(target_query=report_json.get('target', 'unknown'), target_type=report_json.get('type', 'unknown'))
+        profile.emails = set(report_json.get('emails', []))
+        profile.phones = set(report_json.get('phones', []))
+        profile.usernames = set(report_json.get('usernames', []))
+        # profile.raw_data = report_json.get('raw', {}) # If we saved raw data
+        # Check report structure. usually 'profile' key might hold it or root.
+        
+        # Let's assume report_json IS the profile dict structure.
+        # We might need to adjust based on exact save format in engine.py.
+        # usually engine.py saves: profile.to_dict() which has 'emails', 'phones', etc.
+        # raw_data might be missing if we didn't save it to keep reports small.
+        # If raw_data is missing, we only graph the high level findings.
+        
+        # For now, best effort rehydration:
+        if 'raw_data' in report_json:
+            profile.raw_data = report_json['raw_data']
+        
+        from intelligence.graph import GraphBuilder
+        builder = GraphBuilder(profile)
+        graph_data = builder.build()
+        
+        return jsonify({'success': True, 'graph': graph_data})
+        
+    except Exception as e:
+        logger.error(f"Graph API Error: {e}")
+        return jsonify({'success': False, 'error': str(e)}), 500
+
+
+@app.route('/api/export/<scan_id>', methods=['GET'])
+@login_required
+def export_report(scan_id):
+    """Generate and Download PDF Report."""
+    try:
+        # Load Scan Metadata
+        history_file = Path('data/scan_history.json')
+        if not history_file.exists():
+            return jsonify({'success': False, 'error': 'No history'}), 404
+            
+        with open(history_file, 'r') as f:
+            history = json.load(f)
+            
+        scan_data = next((s for s in history if s['scan_id'] == scan_id), None)
+        if not scan_data:
+            return jsonify({'success': False, 'error': 'Scan not found'}), 404
+            
+        # Re-hydrate Profile (Duplicated logic, should refactor later)
+        report_path = scan_data.get('report_path')
+        if not report_path or not os.path.exists(report_path):
+             return jsonify({'success': False, 'error': 'Report file missing'}), 404
+             
+        with open(report_path, 'r') as f:
+            report_json = json.load(f)
+            
+        # Quick hydration
+        from core.engine import Profile
+        profile = Profile(target_query=report_json.get('target', 'unknown'), target_type=report_json.get('type', 'unknown'))
+        profile.emails = set(report_json.get('emails', []))
+        profile.phones = set(report_json.get('phones', []))
+        profile.usernames = set(report_json.get('usernames', []))
+        if 'raw_data' in report_json:
+            profile.raw_data = report_json['raw_data']
+            profile.patterns = report_json.get('patterns', [])
+
+        # Generate PDF
+        from intelligence.reporting import ReportGenerator
+        generator = ReportGenerator()
+        
+        output_dir = Path('data/reports')
+        output_dir.mkdir(parents=True, exist_ok=True)
+        filename = f"Report_{scan_id}.pdf"
+        output_path = output_dir / filename
+        
+        if not generator.generate_pdf(profile, scan_id, str(output_path)):
+            return jsonify({'success': False, 'error': 'Failed to generate PDF (WeasyPrint missing?)'}), 500
+            
+        return send_file(str(output_path), as_attachment=True, download_name=filename)
+        
+    except Exception as e:
+        logger.error(f"Export Error: {e}")
+        return jsonify({'success': False, 'error': str(e)}), 500
+        
+        
 if __name__ == '__main__':
     # This is for development only
     socketio.run(

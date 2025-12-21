@@ -72,3 +72,9 @@ SQLAlchemy>=2.0.23
 # Graph Analysis
 networkx>=3.1
 python-louvain>=0.16
+
+# PDF Reporting
+weasyprint>=60.0
+
+# Deep Search
+googlesearch-python>=1.2.3

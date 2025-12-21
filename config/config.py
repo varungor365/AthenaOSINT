@@ -57,7 +57,8 @@ class Config:
             'LOG_LEVEL': os.getenv('LOG_LEVEL', 'INFO'),
             'MAX_SCAN_DEPTH': int(os.getenv('MAX_SCAN_DEPTH', 3)),
             'RATE_LIMIT': int(os.getenv('RATE_LIMIT', 60)),
-            'MODULE_TIMEOUT': int(os.getenv('MODULE_TIMEOUT', 300)),
+            'MODULE_TIMEOUT': int(os.getenv('MODULE_TIMEOUT', 600)), # Increased to 10 mins for deep scans
+            'MAX_CONCURRENT_MODULES': int(os.getenv('MAX_CONCURRENT_MODULES', 10)), # Default higher for 16GB RAM
             'ENABLE_ACTIVE_CHECKING': os.getenv('ENABLE_ACTIVE_CHECKING', 'False').lower() == 'true',
             
             # AI Settings

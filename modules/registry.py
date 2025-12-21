@@ -450,5 +450,49 @@ MODULE_REGISTRY = {
         'type': 'domain',
         'risk': 'safe',
         'emoji': '🏛️'
+    },
+    
+    # --- ADVANCED ARSENAL ---
+    'redghost': {
+        'category': 'Social Media',
+        'desc': 'Advanced Telegram OSINT & Recon',
+        'type': 'username',
+        'risk': 'medium',
+        'emoji': '👻'
+    },
+    'passive_recon': {
+        'category': 'Framework',
+        'desc': 'Passive Open Source Intelligence Collection',
+        'type': 'domain',
+        'risk': 'safe',
+        'emoji': '🕵️'
+    },
+    'go_recon': {
+        'category': 'Recon',
+        'desc': 'Advanced Go Arsenal (Chaos, Katana, GAU)',
+        'type': 'domain',
+        'risk': 'medium',
+        'emoji': '🚀'
+    },
+    'bbot': {
+        'category': 'Framework',
+        'desc': 'BBOT Recursive OSINT Framework',
+        'type': 'domain',
+        'risk': 'medium',
+        'emoji': '🐝'
+    },
+    'ghost_track': {
+        'category': 'Real World',
+        'desc': 'IP & Phone Geolocation Tracker',
+        'type': 'ip',
+        'risk': 'safe',
+        'emoji': '👻'
+    },
+    'danxy': {
+        'category': 'Framework',
+        'desc': 'Danxy Multi-Tool Framework',
+        'type': 'none',
+        'risk': 'medium',
+        'emoji': '🛠️'
     }
 }

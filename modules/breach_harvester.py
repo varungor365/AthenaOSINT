@@ -1,8 +1,10 @@
 """
 Breach Harvester Module.
-Autonomously searches for and downloads public database dumps (simulated safe sources).
+Autonomously searches for and downloads public database dumps and sensitive files.
+Now enhanced with Google Dorking for deep discovery.
 """
 import requests
+import os
 from loguru import logger
 from pathlib import Path
 from core.background_worker import UPLOAD_DIR
@@ -11,46 +13,84 @@ from config import get_config
 # Metadata
 META = {
     'name': 'breach_harvester',
-    'description': 'Autonomous Database & Dump Downloader',
+    'description': 'Deep Web & Dork Harvester',
     'category': 'harvest',
-    'risk': 'high', # Downloads large files
+    'risk': 'high', 
     'emoji': '📥'
 }
 
 def scan(target: str, profile):
     """
-    Simulates fetching relevant dumps for a target or general harvesting.
-    In a real scenario, this would check specific indexes or torrents.
+    Performs deep harvesting using Google Dorks and known index checks.
     """
-    logger.info(f"[{META['name']}] Initiating harvest query: {target}")
+    logger.info(f"[{META['name']}] Initiating deep harvest query: {target}")
     
-    # 1. Simulate finding a relevant dump (e.g., from a configured source list)
-    # Real sources (e.g., RaidForums archives replacemetns, Pastebin, etc) would go here.
-    # For safety/legal, we limit this to checking known legal leak-check APIs or simulating the download 
-    # of a "found" dump to the autonomous upload folder.
+    found_resources = []
     
-    found_dumps = []
-    
-    # Example logic: specific keywords trigger "downloads"
-    if "db" in target or "leak" in target:
-        dummy_dump_content = f"email,password,hash\nadmin@{target},123456,md5hash"
-        dump_name = f"{target}_dump_2025.csv"
-        dump_path = UPLOAD_DIR / dump_name
+    # 1. Google Dorking (The "Deep" Part)
+    try:
+        from googlesearch import search
         
+        # Aggressive dorks for 16GB RAM power users
+        dorks = [
+            f"site:pastebin.com {target}",
+            f"site:github.com {target} password",
+            f"inurl:env {target}",
+            f"filetype:sql {target}",
+            f"filetype:log {target} password",
+            f"index of / {target}" # Open Directory
+        ]
+        
+        for dork in dorks:
+            logger.info(f"[{META['name']}] Dorking: {dork}")
+            # Max 10 results per dork to avoid ban, but deep enough
+            results = search(dork, num_results=10)
+            
+            for url in results:
+                profile.add_metadata({'type': 'exposed_resource', 'url': url, 'dork': dork})
+                found_resources.append(url)
+                
+                # Check for direct file downloads (SQL, ENV, LOG)
+                if url.endswith(('.sql', '.env', '.log', '.txt')):
+                    _attempt_download(url, target)
+                    
+    except ImportError:
+        logger.warning(f"[{META['name']}] googlesearch-python not installed. Skipping dorks.")
+    except Exception as e:
+        logger.error(f"[{META['name']}] Dorking failed: {e}")
+
+    # 2. Local Simulation (Keep this for reliable demo/testing)
+    if "test" in target or "demo" in target:
+        dummy_dump_content = f"email,password,hash\nadmin@{target},123456,md5hash"
+        dump_name = f"{target}_simulated_dump.csv"
+        dump_path = UPLOAD_DIR / dump_name
         try:
             with open(dump_path, 'w') as f:
                 f.write(dummy_dump_content)
-            
-            logger.success(f"[{META['name']}] Downloaded new dataset: {dump_name}")
             profile.add_metadata({'dump_acquired': dump_name})
-            found_dumps.append(dump_name)
-            
-            # The BackgroundWorker watches UPLOAD_DIR, so this file 
-            # will AUTOMATICALLY be ingested, analyzed, and added to LlamaIndex/Memory.
-            # This completes the "Autonomous Ecosystem" loop.
-            
-        except Exception as e:
-            logger.error(f"[{META['name']}] Failed to write dump: {e}")
-            profile.add_error(META['name'], str(e))
+        except:
+            pass
 
-    return found_dumps
+    return found_resources
+
+def _attempt_download(url: str, target: str):
+    """Attempt to download a found resource."""
+    try:
+        filename = url.split('/')[-1]
+        # Sanitize filename
+        filename = "".join([c for c in filename if c.isalpha() or c.isdigit() or c in ('-','_','.')]).rstrip()
+        if not filename: filename = f"download_{os.urandom(4).hex()}.txt"
+        
+        save_path = UPLOAD_DIR / f"harvested_{filename}"
+        
+        # Stream download (good for RAM usage)
+        with requests.get(url, stream=True, timeout=10) as r:
+            r.raise_for_status()
+            with open(save_path, 'wb') as f:
+                for chunk in r.iter_content(chunk_size=8192):
+                    f.write(chunk)
+                    
+        logger.success(f"[{META['name']}] Downloaded: {filename}")
+        
+    except Exception as e:
+        logger.warning(f"[{META['name']}] Failed to download {url}: {e}")

@@ -1,0 +1,174 @@
+<!DOCTYPE html>
+<html>
+
+<head>
+    <style>
+        @page {
+            size: A4;
+            margin: 2cm;
+
+            @bottom-center {
+                content: "Page " counter(page);
+                font-family: sans-serif;
+                font-size: 10pt;
+                color: #64748b;
+            }
+        }
+
+        body {
+            font-family: 'Helvetica', sans-serif;
+            color: #334155;
+            line-height: 1.6;
+        }
+
+        h1,
+        h2,
+        h3 {
+            color: #0f172a;
+        }
+
+        h1 {
+            border-bottom: 3px solid #38bdf8;
+            padding-bottom: 10px;
+        }
+
+        h2 {
+            margin-top: 30px;
+            border-bottom: 1px solid #cbd5e1;
+        }
+
+        .section {
+            margin-bottom: 40px;
+        }
+
+        .grid {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 20px;
+        }
+
+        .card {
+            background: #f1f5f9;
+            padding: 15px;
+            border-radius: 8px;
+            border-left: 5px solid #38bdf8;
+            margin-bottom: 10px;
+        }
+
+        .alert {
+            background: #fef2f2;
+            padding: 15px;
+            border-radius: 8px;
+            border-left: 5px solid #ef4444;
+            color: #b91c1c;
+        }
+
+        table {
+            width: 100%;
+            border-collapse: collapse;
+            margin: 20px 0;
+        }
+
+        th,
+        td {
+            padding: 12px;
+            border: 1px solid #e2e8f0;
+            text-align: left;
+        }
+
+        th {
+            background-color: #f8fafc;
+        }
+
+        .badge {
+            background: #38bdf8;
+            color: white;
+            padding: 2px 8px;
+            border-radius: 12px;
+            font-size: 0.8em;
+        }
+    </style>
+</head>
+
+<body>
+    <h1>Executive Summary</h1>
+    <div class="section">
+        <p>Calculated Risk Score: <strong>{{ risk_score }}/100</strong></p>
+        <p>AthenaOSINT performed a deep reconnaissance scan on <strong>{{ target }}</strong>. The following report
+            details the exposed digital footprint, potential vulnerabilities, and associated entities.</p>
+    </div>
+
+    <div class="row">
+        <div class="card">
+            <h3>Emails Discovered: {{ emails|length }}</h3>
+        </div>
+        <div class="card">
+            <h3>Subdomains/IPs: {{ (raw_data.get('subdomains', [])|length) + (raw_data.get('ips', [])|length) }}</h3>
+        </div>
+    </div>
+
+    {% if emails %}
+    <div class="section">
+        <h2>📧 Associated Emails</h2>
+        <ul>
+            {% for email in emails %}
+            <li>{{ email }}</li>
+            {% endfor %}
+        </ul>
+    </div>
+    {% endif %}
+
+    {% if usernames %}
+    <div class="section">
+        <h2>👤 Usernames & Accounts</h2>
+        <div class="grid">
+            {% for user in usernames %}
+            <div class="card">{{ user }}</div>
+            {% endfor %}
+        </div>
+    </div>
+    {% endif %}
+
+    {% if raw_data.get('social_accounts') %}
+    <div class="section">
+        <h2>🌐 Social Footprint</h2>
+        <ul>
+            {% for acc in raw_data.get('social_accounts', []) %}
+            <li>
+                {% if acc is string %}
+                <a href="{{ acc }}">{{ acc }}</a>
+                {% else %}
+                <strong>{{ acc.get('site', 'Link') }}:</strong> <a href="{{ acc.get('url') }}">{{ acc.get('url') }}</a>
+                {% endif %}
+            </li>
+            {% endfor %}
+        </ul>
+    </div>
+    {% endif %}
+
+    {% if raw_data.get('subdomains') %}
+    <div class="section">
+        <h2>🕸️ Network Infrastructure</h2>
+        <table>
+            <thead>
+                <tr>
+                    <th>Subdomain</th>
+                </tr>
+            </thead>
+            <tbody>
+                {% for sub in raw_data.get('subdomains', [])[:20] %}
+                <tr>
+                    <td>{{ sub }}</td>
+                </tr>
+                {% endfor %}
+            </tbody>
+        </table>
+        {% if raw_data.get('subdomains', [])|length > 20 %}
+        <p><em>...and {{ raw_data.get('subdomains')|length - 20 }} more.</em></p>
+        {% endif %}
+    </div>
+    {% endif %}
+
+</body>
+
+</html>

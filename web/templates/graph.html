@@ -1,0 +1,152 @@
+{% extends "base.html" %}
+
+{% block content %}
+<div class="container-fluid h-100 p-0">
+    <!-- Graph Toolbar -->
+    <div class="bg-dark border-bottom border-secondary p-2 d-flex justify-content-between align-items-center">
+        <div>
+            <span class="badg bg-primary">Graph View</span>
+            <span class="text-light ms-2">{{ scan_id or 'Live Session' }}</span>
+        </div>
+        <div>
+            <button class="btn btn-sm btn-outline-light" onclick="graph.fit()">Recenter</button>
+            <button class="btn btn-sm btn-outline-light" onclick="togglePhysics()">Toggle Physics</button>
+        </div>
+    </div>
+
+    <!-- Canvas -->
+    <div id="mynetwork" style="width: 100%; height: calc(100vh - 120px); background-color: #111;"></div>
+
+    <!-- Context Menu or Details Panel (Hidden by default) -->
+    <div id="node-details" class="card bg-dark text-light position-absolute"
+        style="display:none; width: 300px; z-index: 1000;">
+        <div class="card-header d-flex justify-content-between">
+            <h6 id="detail-title" class="mb-0">Node Details</h6>
+            <button type="button" class="btn-close btn-close-white" onclick="$('#node-details').hide()"></button>
+        </div>
+        <div class="card-body">
+            <p id="detail-content"></p>
+            <div class="d-grid gap-2">
+                <button class="btn btn-sm btn-info" onclick="investigateNode()">Investigate This</button>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Vis.js CDN -->
+<script type="text/javascript" src="https://unpkg.com/vis-network/standalone/umd/vis-network.min.js"></script>
+
+<script>
+    var network = null;
+    var nodes = new vis.DataSet([]);
+    var edges = new vis.DataSet([]);
+    var selectedNodeId = null;
+
+    $(document).ready(function () {
+        // Initial Data Fetch
+        const scanId = "{{ scan_id }}" || "current"; // Passed from render_template
+
+        fetchGraphData(scanId);
+    });
+
+    function fetchGraphData(scanId) {
+        $.get(`/api/graph/${scanId}`, function (data) {
+            if (data.success) {
+                drawGraph(data.graph);
+            } else {
+                alert("Failed to load graph data");
+            }
+        });
+    }
+
+    function drawGraph(graphData) {
+        nodes = new vis.DataSet(graphData.nodes);
+        edges = new vis.DataSet(graphData.edges);
+
+        var container = document.getElementById('mynetwork');
+        var data = {
+            nodes: nodes,
+            edges: edges
+        };
+        var options = {
+            nodes: {
+                shape: 'dot',
+                size: 20,
+                font: {
+                    size: 14,
+                    color: '#ffffff'
+                },
+                borderWidth: 2
+            },
+            edges: {
+                width: 1,
+                color: { color: '#555555', highlight: '#848484' },
+                smooth: {
+                    type: 'continuous'
+                }
+            },
+            physics: {
+                enabled: true,
+                solver: 'forceAtlas2Based',
+                forceAtlas2Based: {
+                    gravitationalConstant: -50,
+                    centralGravity: 0.01,
+                    springLength: 100,
+                    springConstant: 0.08
+                },
+                stabilization: { iterations: 150 }
+            },
+            interaction: {
+                hover: true,
+                tooltipDelay: 200
+            }
+        };
+
+        network = new vis.Network(container, data, options);
+
+        // Events
+        network.on("click", function (params) {
+            if (params.nodes.length > 0) {
+                selectedNodeId = params.nodes[0];
+                var node = nodes.get(selectedNodeId);
+                showDetails(node, params.pointer.DOM);
+            } else {
+                $('#node-details').hide();
+            }
+        });
+    }
+
+    function showDetails(node, pos) {
+        $('#detail-title').text(node.label);
+        $('#detail-content').text(node.title || "No additional details.");
+
+        // Position info box
+        // Simple positioning logic
+        $('#node-details').css({
+            top: pos.y + 20,
+            left: pos.x + 20
+        }).show();
+    }
+
+    function investigateNode() {
+        if (!selectedNodeId) return;
+        var node = nodes.get(selectedNodeId);
+
+        // Redirect to research mode with this objective
+        window.location.href = `/research?objective=Investigate ${node.label}`;
+    }
+
+    var physicsEnabled = true;
+    function togglePhysics() {
+        physicsEnabled = !physicsEnabled;
+        network.setOptions({ physics: { enabled: physicsEnabled } });
+    }
+</script>
+
+<style>
+    /* Custom Scrollbar for graph container if needed */
+    #mynetwork {
+        border: 1px solid #333;
+    }
+</style>
+{% endblock %}

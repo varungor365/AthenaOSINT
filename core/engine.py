@@ -266,27 +266,33 @@ class AthenaEngine:
         return min(count * 10, 95) # Cap at 95 until done
     
     def run_scan(self, module_list: List[str]):
-        """Run OSINT scan with specified modules.
-        
-        Args:
-            module_list: List of module names to execute
-        """
+        """Run OSINT scan with specified modules."""
         self.start_time = time.time()
-        self._print_status(f"Starting scan with {len(module_list)} modules", 'info')
+        self._print_status(f"Starting scan with {len(module_list)} modules (Parallel Execution)", 'info')
         
-        for module_name in module_list:
-            try:
-                self._run_module(module_name)
-            except Exception as e:
-                error_msg = f"Module {module_name} failed: {str(e)}"
-                logger.error(error_msg)
-                self.profile.add_error(module_name, str(e))
-                self._print_status(error_msg, 'error')
+        max_workers = self.config.get('MAX_CONCURRENT_MODULES', 5)
         
+        from concurrent.futures import ThreadPoolExecutor, as_completed
+        
+        with ThreadPoolExecutor(max_workers=max_workers) as executor:
+            future_to_module = {executor.submit(self._run_module, mod): mod for mod in module_list}
+            
+            for future in as_completed(future_to_module):
+                module_name = future_to_module[future]
+                try:
+                    future.result()
+                except Exception as e:
+                    error_msg = f"Module {module_name} failed: {str(e)}"
+                    logger.error(error_msg)
+                    # self.profile.add_error(module_name, str(e)) # Already handled in _run_module if we want
+                    # But _run_module raises exceptions now, so we catch them here.
+                    self.profile.add_error(module_name, str(e))
+                    self._print_status(error_msg, 'error')
+
         # Calculate scan duration
         self.profile.scan_duration = time.time() - self.start_time
         
-        # Run modules that require prior results (e.g. Scrapers)
+        # Run modules that require prior results (e.g. Scrapers) - Keep Sequential for safety
         try:
              import modules.profile_scraper as profile_scraper
              profile_scraper.scan(self.profile.target_query, self.profile)

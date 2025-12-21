@@ -1,0 +1,72 @@
+<!DOCTYPE html>
+<html>
+
+<head>
+    <style>
+        body {
+            margin: 0;
+            padding: 0;
+            font-family: 'Helvetica', sans-serif;
+            background-color: #0f172a;
+            /* Slate 900 */
+            color: white;
+            height: 100vh;
+            display: flex;
+            flex-direction: column;
+            justify-content: center;
+            align-items: center;
+            text-align: center;
+        }
+
+        .logo {
+            font-size: 4em;
+            font-weight: bold;
+            color: #38bdf8;
+            /* Sky 400 */
+            margin-bottom: 20px;
+        }
+
+        .title {
+            font-size: 3em;
+            margin-bottom: 10px;
+        }
+
+        .subtitle {
+            font-size: 1.5em;
+            color: #94a3b8;
+            margin-bottom: 50px;
+        }
+
+        .meta {
+            font-size: 1.2em;
+            border-top: 1px solid #334155;
+            padding-top: 20px;
+            width: 60%;
+        }
+
+        .confidential {
+            position: absolute;
+            bottom: 30px;
+            color: #ef4444;
+            font-weight: bold;
+            letter-spacing: 2px;
+        }
+    </style>
+</head>
+
+<body>
+    <div class="logo">ATHENA OSINT</div>
+    <div class="title">Intelligence Report</div>
+    <div class="subtitle">Deep Investigation Profile</div>
+
+    <div class="meta">
+        <p><strong>Target:</strong> {{ target }}</p>
+        <p><strong>Type:</strong> {{ type }}</p>
+        <p><strong>Date:</strong> {{ date }}</p>
+        <p><strong>Case ID:</strong> {{ scan_id }}</p>
+    </div>
+
+    <div class="confidential">CONFIDENTIAL // INTERNAL USE ONLY</div>
+</body>
+
+</html>

@@ -62,8 +62,8 @@ def scan(target: str, profile) -> None:
         cmd = [
             'theHarvester',
             '-d', domain,
-            '-b', 'all',  # Use all sources
-            '-l', '500'   # Limit results
+            '-b', 'all',   # All sources
+            '-l', '2000'   # Increased limit for deep scan
         ]
         
         print(f"  {Fore.CYAN}└─ Scanning {domain}...{Style.RESET_ALL}")
