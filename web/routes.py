@@ -1786,6 +1786,136 @@ def harvester_alerts():
         logger.error(f"Failed to get harvester alerts: {e}")
         return jsonify({'success': False, 'error': str(e)}), 500
 
+# ============================================================================
+# MR.HOLMES INTEGRATION - Unified OSINT Tool
+# ============================================================================
+
+@app.route('/mrholmes')
+@login_required
+def mrholmes_dashboard():
+    """Mr.Holmes integrated OSINT tool dashboard."""
+    return render_template('mrholmes.html')
+
+@app.route('/api/mrholmes/install', methods=['POST'])
+@login_required
+def mrholmes_install():
+    """Install Mr.Holmes from GitHub."""
+    try:
+        from modules.mrholmes import MrHolmes
+        
+        mrholmes = MrHolmes()
+        
+        if mrholmes.is_installed():
+            return jsonify({
+                'success': True,
+                'message': 'Mr.Holmes is already installed',
+                'install_dir': str(mrholmes.install_dir)
+            })
+        
+        # Install in background
+        success = mrholmes.install()
+        
+        if success:
+            return jsonify({
+                'success': True,
+                'message': 'Mr.Holmes installed successfully',
+                'install_dir': str(mrholmes.install_dir)
+            })
+        else:
+            return jsonify({
+                'success': False,
+                'error': 'Installation failed. Check logs for details.'
+            }), 500
+            
+    except Exception as e:
+        logger.error(f"Mr.Holmes installation failed: {e}")
+        return jsonify({'success': False, 'error': str(e)}), 500
+
+@app.route('/api/mrholmes/status', methods=['GET'])
+@login_required
+def mrholmes_status():
+    """Check Mr.Holmes installation status."""
+    try:
+        from modules.mrholmes import MrHolmes
+        
+        mrholmes = MrHolmes()
+        installed = mrholmes.is_installed()
+        
+        return jsonify({
+            'success': True,
+            'installed': installed,
+            'install_dir': str(mrholmes.install_dir) if installed else None,
+            'repo_url': mrholmes.repo_url
+        })
+        
+    except Exception as e:
+        logger.error(f"Failed to check Mr.Holmes status: {e}")
+        return jsonify({'success': False, 'error': str(e)}), 500
+
+@app.route('/api/mrholmes/search', methods=['POST'])
+@login_required
+def mrholmes_search():
+    """
+    Run Mr.Holmes search.
+    
+    Request JSON:
+        {
+            "target": "username/email/phone/domain",
+            "target_type": "username|email|phone|domain|auto",
+            "use_proxy": false
+        }
+    """
+    try:
+        data = request.get_json()
+        target = data.get('target', '').strip()
+        target_type = data.get('target_type', 'auto')
+        use_proxy = data.get('use_proxy', False)
+        
+        if not target:
+            return jsonify({'success': False, 'error': 'Target is required'}), 400
+        
+        from modules.mrholmes import scan
+        
+        logger.info(f"Mr.Holmes search: {target} (type: {target_type})")
+        
+        # Run search
+        result = scan(target, target_type=target_type, use_proxy=use_proxy)
+        
+        return jsonify({
+            'success': True,
+            'result': result
+        })
+        
+    except Exception as e:
+        logger.error(f"Mr.Holmes search failed: {e}")
+        return jsonify({'success': False, 'error': str(e)}), 500
+
+@app.route('/api/mrholmes/results/<target_type>/<target>', methods=['GET'])
+@login_required
+def mrholmes_get_results(target_type, target):
+    """Retrieve Mr.Holmes results for a target."""
+    try:
+        from modules.mrholmes import MrHolmes
+        
+        mrholmes = MrHolmes()
+        result = mrholmes.get_results(target, target_type)
+        
+        if result:
+            return jsonify({
+                'success': True,
+                'result': result
+            })
+        else:
+            return jsonify({
+                'success': False,
+                'error': 'No results found for this target'
+            }), 404
+            
+    except Exception as e:
+        logger.error(f"Failed to get Mr.Holmes results: {e}")
+        return jsonify({'success': False, 'error': str(e)}), 500
+
+
 if __name__ == '__main__':
     # This is for development only
     socketio.run(
