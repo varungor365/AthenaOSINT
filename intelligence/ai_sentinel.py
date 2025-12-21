@@ -110,7 +110,7 @@ Analyze these OSINT scan findings for security anomalies and suspicious patterns
 CURRENT FINDINGS:
 {json.dumps(findings, indent=2, default=str)[:2000]}
 
-{f"BASELINE (Normal Activity):\\n{json.dumps(baseline, indent=2, default=str)[:1000]}" if baseline else ""}
+{("BASELINE (Normal Activity):" + chr(10) + json.dumps(baseline, indent=2, default=str)[:1000]) if baseline else ""}
 
 Identify:
 1. Unusual email patterns or leaked credentials
