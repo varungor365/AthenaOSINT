@@ -1,0 +1,121 @@
+{% extends "base.html" %}
+
+{% block content %}
+<div class="row mb-4">
+    <div class="col-md-12">
+        <div class="card bg-dark text-white border-primary">
+            <div class="card-body p-4 d-flex justify-content-between align-items-center">
+                <div>
+                    <h1 class="display-5 fw-bold text-primary">SENTINEL MODE <i class="bi bi-shield-check"></i></h1>
+                    <p class="lead mb-0">Autonomous Watchdog & Vulnerability Lab</p>
+                </div>
+                <div class="text-end">
+                    <span class="badge bg-success mb-2">Active</span>
+                    <br>
+                    <small>Scheduler Running</small>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<div class="row">
+    <!-- Watchlist -->
+    <div class="col-md-4">
+        <div class="card mb-4">
+            <div class="card-header bg-secondary text-white fw-bold">
+                <i class="bi bi-eye"></i> Watchlist
+            </div>
+            <div class="card-body">
+                <form id="add-monitor-form" class="mb-3">
+                    <div class="input-group">
+                        <input type="text" id="monitor-target" class="form-control" placeholder="Domain or URL"
+                            required>
+                        <button class="btn btn-primary" type="submit">Add</button>
+                    </div>
+                    <div class="form-check form-switch mt-2">
+                        <input class="form-check-input" type="checkbox" id="check-vuln" checked>
+                        <label class="form-check-label" for="check-vuln">Enable Vulnerability Lab (Nuclei)</label>
+                    </div>
+                </form>
+
+                <ul class="list-group" id="job-list">
+                    <li class="list-group-item text-center text-muted">Loading jobs...</li>
+                </ul>
+            </div>
+        </div>
+    </div>
+
+    <!-- Alert Feed -->
+    <div class="col-md-8">
+        <div class="card">
+            <div class="card-header bg-danger text-white fw-bold">
+                <i class="bi bi-radioactive"></i> Vulnerability & Alert Feed
+            </div>
+            <div class="card-body p-0">
+                <div class="list-group list-group-flush" id="alert-feed">
+                    <div class="text-center p-5 text-muted">
+                        <i class="bi bi-check-circle display-4"></i>
+                        <p class="mt-3">No critical alerts detected.</p>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<script>
+    $(document).ready(function () {
+        loadJobs();
+
+        // Add Monitor
+        $('#add-monitor-form').submit(function (e) {
+            e.preventDefault();
+            const target = $('#monitor-target').val();
+            const vuln = $('#check-vuln').is(':checked');
+
+            // We'll add two jobs if vuln is checked: One for Diffing, one for Nuclei
+            $.post('/api/sentinel/add', { target: target, module: 'headless_monitor' }, function (res) {
+                if (vuln) {
+                    $.post('/api/sentinel/add', { target: target, module: 'nuclei' });
+                }
+                $('#monitor-target').val('');
+                loadJobs();
+                alert("Added to Sentinel Watchlist");
+            });
+        });
+    });
+
+    function loadJobs() {
+        $.get('/api/sentinel/jobs', function (data) {
+            const list = $('#job-list');
+            list.empty();
+            if (data.jobs.length === 0) {
+                list.append('<li class="list-group-item text-muted">No active monitors.</li>');
+                return;
+            }
+
+            data.jobs.forEach(job => {
+                const badge = job.name.includes("nuclei") ? '<span class="badge bg-danger">Vuln</span>' : '<span class="badge bg-info">Diff</span>';
+                list.append(`
+                <li class="list-group-item d-flex justify-content-between align-items-center">
+                    <div>
+                        ${badge} <strong>${job.name.replace('Monitor: ', '').split('(')[0]}</strong>
+                        <br><small class="text-muted">Next: ${new Date(job.next_run).toLocaleTimeString()}</small>
+                    </div>
+                    <button class="btn btn-sm btn-outline-danger" onclick="removeJob('${job.id}')">&times;</button>
+                </li>
+            `);
+            });
+        });
+    }
+
+    function removeJob(id) {
+        if (confirm("Stop monitoring?")) {
+            $.post('/api/sentinel/remove', { id: id }, function () {
+                loadJobs();
+            });
+        }
+    }
+</script>
+{% endblock %}

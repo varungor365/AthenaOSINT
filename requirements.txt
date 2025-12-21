@@ -78,3 +78,6 @@ weasyprint>=60.0
 
 # Deep Search
 googlesearch-python>=1.2.3
+
+# Scheduling
+APScheduler>=3.10.4

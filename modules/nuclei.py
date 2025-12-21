@@ -1,8 +1,6 @@
 """
-Nuclei module for AthenaOSINT.
-
-This module wraps the ProjectDiscovery Nuclei tool for vulnerability scanning.
-Requires 'nuclei' to be installed and in the system PATH.
+Nuclei Module.
+Automated Vulnerability Scanner with 'Critical Only' filtering.
 """
 
 import subprocess
@@ -10,41 +8,73 @@ import json
 import shutil
 import tempfile
 import os
+import sys
 from typing import Dict, List, Any
 from colorama import Fore, Style
 from loguru import logger
+from pathlib import Path
 
 from core.engine import Profile
 
-def scan(target: str, profile: Profile) -> None:
-    """Scan a target using Nuclei.
-    
-    Args:
-        target: Target domain/URL to scan
-        profile: Profile object to update
-    """
-    # Only run on domains or URLs
-    if '@' in target:
-        return
-        
-    nuclei_path = shutil.which('nuclei')
-    if not nuclei_path:
-        logger.warning("Nuclei binary not found in PATH. Skipping module.")
-        print(f"{Fore.YELLOW}[!] Nuclei tool not found. Please install it to use this module.{Style.RESET_ALL}")
+META = {
+    'name': 'nuclei',
+    'description': 'Advanced Vulnerability Scanner',
+    'category': 'exploitation',
+    'risk': 'aggressive',
+    'emoji': '☢️'
+}
+
+def install():
+    """Attempt to install Nuclei via Go."""
+    if shutil.which('nuclei'):
         return
 
-    # Check if we have gathered subdomains to scan
-    targets_to_scan = [target]
-    if profile.subdomains:
-        targets_to_scan.extend(profile.subdomains)
+    print("[-] It seems nuclei is missing. Attempting auto-install via Go...")
+    try:
+        # go install -v github.com/projectdiscovery/nuclei/v3/cmd/nuclei@latest
+        subprocess.run(['go', 'install', '-v', 'github.com/projectdiscovery/nuclei/v3/cmd/nuclei@latest'], check=True)
+        
+        # Add go bin to path if needed (though usually handled by env)
+        home = str(Path.home())
+        go_bin = os.path.join(home, 'go', 'bin')
+        if go_bin not in os.environ['PATH']:
+            os.environ['PATH'] += os.pathsep + go_bin
+            
+        if shutil.which('nuclei'):
+             print("[+] Nuclei installed.")
+        else:
+             print("[!] Install appeared to work but 'nuclei' not in PATH. Check go/bin.")
+             
+    except Exception as e:
+        print(f"[!] Nuclei install failed: {e}")
+
+def scan(target: str, profile: Profile) -> None:
+    """Scan a target using Nuclei."""
+    install() # Ensure it's there
     
-    # Limit number of targets to avoid massive long scans in this framework context
-    # or write them to a file target_list.txt
+    nuclei_path = shutil.which('nuclei')
+    if not nuclei_path:
+        # Fallback check for user's go/bin
+        home = str(Path.home())
+        potential_path = os.path.join(home, 'go', 'bin', 'nuclei')
+        if os.path.exists(potential_path):
+            nuclei_path = potential_path
     
-    print(f"{Fore.CYAN}[+] Running Nuclei on {len(targets_to_scan)} targets...{Style.RESET_ALL}")
+    if not nuclei_path:
+        logger.warning("Nuclei not found. Skipping.")
+        return
+
+    # Filter targets
+    targets_to_scan = []
+    if not '@' in target: targets_to_scan.append(target)
+    if profile.subdomains: targets_to_scan.extend(profile.subdomains)
+    
+    # Cap targets for safety in auto-mode
+    targets_to_scan = targets_to_scan[:50] 
+
+    print(f"{Fore.CYAN}[+] Nuclei Sentinel: Scanning {len(targets_to_scan)} targets (Critical/High only)...{Style.RESET_ALL}")
     
     try:
-        # Write targets to temp file
         with tempfile.NamedTemporaryFile(mode='w', suffix='.txt', delete=False) as target_file:
             for t in targets_to_scan:
                 target_file.write(f"{t}\n")
@@ -53,97 +83,51 @@ def scan(target: str, profile: Profile) -> None:
         with tempfile.NamedTemporaryFile(suffix='.json', delete=False) as output_file:
             output_path = output_file.name
 
-        # Run nuclei
-        # -l targets.txt -json -o output.json -t cves,exposures (limit templates for speed)
+        # Run nuclei with strict filtering
         cmd = [
             nuclei_path,
             '-l', target_list_path,
             '-json-export', output_path,
-            '-tags', 'cve,misconfig,exposure', # Reasonable default tags
-            '-rate-limit', '50'
+            '-severity', 'critical,high', # ONLY High/Critical for Lab
+            '-rate-limit', '50',
+            '-silent' 
         ]
         
-        process = subprocess.Popen(
-            cmd,
-            stdout=subprocess.PIPE,
-            stderr=subprocess.PIPE,
-            text=True
-        )
-        
-        # 5 minute timeout? Nuclei can be long. Let's say 10 mins.
-        try:
-             stdout, stderr = process.communicate(timeout=600)
-        except subprocess.TimeoutExpired:
-             process.kill()
-             logger.warning("Nuclei scan timed out")
-             print(f"{Fore.YELLOW}[!] Nuclei scan timed out{Style.RESET_ALL}")
+        subprocess.run(cmd, timeout=900) # 15 min timeout
 
-        vulns_found = 0
-        
-        # Parse output
+        # Parse
+        vulns = 0
         if os.path.exists(output_path):
-            with open(output_path, 'r') as f:
-                # Nuclei outputs JSON lines output (sometimes) or list
-                # Usually json-export is a JSON array in recent versions? 
-                # Or -json is jsonl. Let's handle json lines.
-                content = f.read()
-                if content.strip():
-                    try:
-                        # Try parsing as whole json
-                        entries = json.loads(content)
-                        if isinstance(entries, list):
-                            for entry in entries:
-                                _process_nuclei_entry(entry, profile)
-                                vulns_found += 1
-                        else:
-                            # Single entry?
-                            _process_nuclei_entry(entries, profile)
-                            vulns_found += 1
-                    except json.JSONDecodeError:
-                        # Try lines
-                        lines = content.splitlines()
-                        for line in lines:
-                             try:
-                                 entry = json.loads(line)
-                                 _process_nuclei_entry(entry, profile)
-                                 vulns_found += 1
-                             except:
-                                 pass
-        
-        # Clean up
-        os.unlink(target_list_path)
-        if os.path.exists(output_path):
-            os.unlink(output_path)
-            
-        if vulns_found > 0:
-            print(f"  {Fore.RED}└─ Found {vulns_found} potential vulnerabilities!{Style.RESET_ALL}")
-            logger.warning(f"Nuclei: Found {vulns_found} issues")
+             content = ""
+             with open(output_path, 'r') as f: content = f.read()
+             
+             # JSONL parsing
+             if content.strip():
+                 lines = content.splitlines()
+                 for line in lines:
+                     try:
+                         entry = json.loads(line)
+                         info = entry.get('info', {})
+                         sev = info.get('severity', 'low')
+                         name = info.get('name', 'Unknown')
+                         url = entry.get('matched-at', '')
+                         
+                         profile.add_pattern("Vulnerability", sev, f"{name} at {url}")
+                         
+                         # Add to raw data
+                         if 'nuclei' not in profile.raw_data: profile.raw_data['nuclei'] = []
+                         profile.raw_data['nuclei'].append(entry)
+                         vulns += 1
+                     except: pass
+                     
+        if vulns > 0:
+            print(f"  {Fore.RED}└─ Nuclei found {vulns} CRITICAL issues!{Style.RESET_ALL}")
         else:
-            print(f"  {Fore.GREEN}└─ No critical vulnerabilities found.{Style.RESET_ALL}")
+             print(f"  {Fore.GREEN}└─ Clean scan.{Style.RESET_ALL}")
+
+        # Cleanup
+        os.unlink(target_list_path)
+        if os.path.exists(output_path): os.unlink(output_path)
 
     except Exception as e:
-        logger.error(f"Nuclei wrapper failed: {e}")
-        print(f"{Fore.RED}[!] Nuclei wrapper failed: {e}{Style.RESET_ALL}")
-
-def _process_nuclei_entry(entry: Dict, profile: Profile):
-    """Process a single nuclei result."""
-    info = entry.get('info', {})
-    severity = info.get('severity', 'low')
-    name = info.get('name', 'Unknown')
-    host = entry.get('host', '')
-    
-    # Store in profile.raw_data or profile.breaches (as vulnerability)
-    # Maybe add a 'vulnerabilities' field to Profile later? 
-    # For now, put in raw_data['nuclei'] list
-    
-    if 'nuclei' not in profile.raw_data:
-        profile.raw_data['nuclei'] = []
-    
-    # Only keep medium/high/critical?
-    if severity in ['medium', 'high', 'critical']:
-        profile.raw_data['nuclei'].append({
-            'name': name,
-            'severity': severity,
-            'host': host,
-            'matched': entry.get('matched-at', '')
-        })
+        logger.error(f"Nuclei Error: {e}")

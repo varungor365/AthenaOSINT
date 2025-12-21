@@ -14,7 +14,11 @@ from pydantic import BaseModel
 
 app = FastAPI(title="Agent Orchestrator", version="0.1.0")
 
-MODEL_NAME = os.getenv("AGENT_MODEL", "mistral")
+# Configuration (Optimized for 16GB RAM)
+MODEL_NAME = os.getenv("AGENT_MODEL", "wizard-vicuna-uncensored:13b")  # Larger model
+CONTEXT_SIZE = int(os.getenv("AGENT_CONTEXT", "8192"))  # 8K context
+NUM_THREADS = int(os.getenv("AGENT_THREADS", "8"))  # Parallel processing
+NUM_PARALLEL = int(os.getenv("AGENT_PARALLEL", "4"))  # Concurrent requests
 HOST = os.getenv("AGENT_HOST", "0.0.0.0")
 PORT = int(os.getenv("AGENT_PORT", "8081"))
 
@@ -124,14 +128,20 @@ def _has_ollama() -> bool:
 
 
 def _ollama_generate(model: str, prompt: str, system: Optional[str], temperature: float, max_tokens: int) -> str:
-    """Generate text using Ollama HTTP API instead of CLI for reliability."""
+    """Generate text using Ollama HTTP API with 16GB RAM optimizations."""
     url = "http://127.0.0.1:11434/api/generate"
     payload = {
         "model": model,
         "prompt": prompt,
         "options": {
             "temperature": temperature,
-            "num_predict": max_tokens
+            "num_predict": max_tokens,
+            "num_ctx": CONTEXT_SIZE,  # 8K context window
+            "num_thread": NUM_THREADS,  # 8 parallel threads
+            "num_parallel": NUM_PARALLEL,  # 4 concurrent requests
+            "num_gpu": 0,  # CPU-only inference
+            "top_p": 0.9,
+            "top_k": 40
         }
     }
     if system:

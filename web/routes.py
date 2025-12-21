@@ -1481,177 +1481,148 @@ def scripts_delete(name):
     except Exception as e:
         return jsonify({"success": False, "error": str(e)}), 500
 
-# --- Research Mode Routes ---
+# ============================================================================
+# SENTINEL MODE - AI-Powered Monitoring & Vulnerability Lab
+# ============================================================================
 
-@app.route('/research')
+@app.route('/sentinel')
 @login_required
-def research_view():
-    """Render the Research Situation Room."""
-    return render_template('research.html')
+def sentinel_view():
+    """Render Sentinel monitoring dashboard."""
+    return render_template('sentinel.html')
 
-@socketio.on('start_research')
-def handle_research_start(data):
-    """Handle start of a multi-agent investigation."""
-    objective = data.get('objective')
-    if not objective:
-        return
-    
-    logger.info(f"Research requested: {objective}")
+@app.route('/api/sentinel/add', methods=['POST'])
+@login_required
+def sentinel_add_monitor():
+    """Add a new monitoring job."""
+    try:
+        from core.scheduler import get_scheduler
+        
+        data = request.get_json() or request.form.to_dict()
+        target = data.get('target')
+        module = data.get('module', 'headless_monitor')
+        interval_hours = int(data.get('interval', 6))
+        
+        if not target:
+            return jsonify({'success': False, 'error': 'Target required'}), 400
+        
+        scheduler = get_scheduler()
+        job_id = scheduler.add_monitor_job(target, module, interval_hours)
+        
+        return jsonify({'success': True, 'job_id': job_id})
+    except Exception as e:
+        logger.error(f"Failed to add monitor: {e}")
+        return jsonify({'success': False, 'error': str(e)}), 500
 
-    def callback(sender, recipient, message_dict):
-        try:
-            content = message_dict.get('content', '')
-            sender_name = sender.name if hasattr(sender, 'name') else str(sender)
-            
-            # Emit to frontend (socketio emit is thread-safe in Flask-SocketIO)
-            socketio.emit('research_update', {
-                'sender': sender_name,
-                'content': content
+@app.route('/api/sentinel/jobs', methods=['GET'])
+@login_required
+def sentinel_list_jobs():
+    """List all active monitoring jobs."""
+    try:
+        from core.scheduler import get_scheduler
+        
+        scheduler = get_scheduler()
+        jobs = scheduler.list_jobs()
+        
+        return jsonify({'success': True, 'jobs': jobs})
+    except Exception as e:
+        logger.error(f"Failed to list jobs: {e}")
+        return jsonify({'success': False, 'error': str(e)}), 500
+
+@app.route('/api/sentinel/remove', methods=['POST'])
+@login_required
+def sentinel_remove_job():
+    """Remove a monitoring job."""
+    try:
+        from core.scheduler import get_scheduler
+        
+        data = request.get_json() or request.form.to_dict()
+        job_id = data.get('id')
+        
+        if not job_id:
+            return jsonify({'success': False, 'error': 'Job ID required'}), 400
+        
+        scheduler = get_scheduler()
+        removed = scheduler.remove_job(job_id)
+        
+        return jsonify({'success': True, 'removed': removed})
+    except Exception as e:
+        logger.error(f"Failed to remove job: {e}")
+        return jsonify({'success': False, 'error': str(e)}), 500
+
+@app.route('/api/sentinel/analyze-diff', methods=['POST'])
+@login_required
+def sentinel_analyze_diff():
+    """AI-powered diff analysis."""
+    try:
+        from intelligence.ai_sentinel import get_ai_analyzer
+        
+        data = request.get_json()
+        old_content = data.get('old_content', '')
+        new_content = data.get('new_content', '')
+        url = data.get('url', 'unknown')
+        context = data.get('context', {})
+        
+        analyzer = get_ai_analyzer()
+        analysis = analyzer.analyze_diff(old_content, new_content, url, context)
+        
+        # Emit alert if critical/high severity
+        if analysis['severity'] in ['critical', 'high']:
+            socketio.emit('sentinel_alert', {
+                'severity': analysis['severity'],
+                'summary': analysis['summary'],
+                'url': url,
+                'timestamp': datetime.now().isoformat()
             })
-        except Exception as e:
-            logger.error(f"Socket emit error: {e}")
-
-    def run_wrapper():
-        try:
-            from intelligence.autogen_wrapper import MultiAgentSystem
-            mas = MultiAgentSystem()
-            mas.run_investigation(objective, update_callback=callback)
-            socketio.emit('research_complete', {})
-        except Exception as e:
-            logger.error(f"Research error: {e}")
-            socketio.emit('error', {'msg': str(e)})
-
-    thread = threading.Thread(target=run_wrapper)
-    thread.daemon = True
-    thread.start()
-
-# --- Graph Visualization Routes ---
-
-@app.route('/graph/<scan_id>')
-@login_required
-def graph_view(scan_id):
-    """Render the Graph Visualization."""
-    return render_template('graph.html', scan_id=scan_id)
-
-@app.route('/api/graph/<scan_id>', methods=['GET'])
-@login_required
-def graph_api(scan_id):
-    """Get Graph Data for Vis.js."""
-    try:
-        # Load Scan Data
-        # Re-using the logic from get_scan_details
-        history_file = Path('data/scan_history.json')
-        if not history_file.exists():
-            return jsonify({'success': False, 'error': 'No history'}), 404
-            
-        with open(history_file, 'r') as f:
-            history = json.load(f)
-            
-        scan_data = next((s for s in history if s['scan_id'] == scan_id), None)
-        if not scan_data:
-            return jsonify({'success': False, 'error': 'Scan not found'}), 404
-            
-        # Reconstruct Profile Object (Simplified)
-        from core.engine import Profile
-        # We need a way to restore Profile from JSON. 
-        # For now, we will just manually instantiate and populate from what we saved.
-        # Ideally, Profile should have a .from_dict() method.
-        # Assuming we saved 'full_report' (the Profile.to_dict()) in the JSON?
-        # scan_history usually saves metadata. The full report is in a separate .json file path.
         
-        report_path = scan_data.get('report_path')
-        if not report_path or not os.path.exists(report_path):
-             return jsonify({'success': False, 'error': 'Report file missing'}), 404
-             
-        with open(report_path, 'r') as f:
-            report_json = json.load(f)
-            
-        # Rehydrate Profile-like structure for the GraphBuilder
-        # Since GraphBuilder expects a Profile object attributes, we can just use a dummy class or dict wrapper
-        # Or better, instantiate Profile and fill it.
-        
-        profile = Profile(target_query=report_json.get('target', 'unknown'), target_type=report_json.get('type', 'unknown'))
-        profile.emails = set(report_json.get('emails', []))
-        profile.phones = set(report_json.get('phones', []))
-        profile.usernames = set(report_json.get('usernames', []))
-        # profile.raw_data = report_json.get('raw', {}) # If we saved raw data
-        # Check report structure. usually 'profile' key might hold it or root.
-        
-        # Let's assume report_json IS the profile dict structure.
-        # We might need to adjust based on exact save format in engine.py.
-        # usually engine.py saves: profile.to_dict() which has 'emails', 'phones', etc.
-        # raw_data might be missing if we didn't save it to keep reports small.
-        # If raw_data is missing, we only graph the high level findings.
-        
-        # For now, best effort rehydration:
-        if 'raw_data' in report_json:
-            profile.raw_data = report_json['raw_data']
-        
-        from intelligence.graph import GraphBuilder
-        builder = GraphBuilder(profile)
-        graph_data = builder.build()
-        
-        return jsonify({'success': True, 'graph': graph_data})
-        
+        return jsonify({'success': True, 'analysis': analysis})
     except Exception as e:
-        logger.error(f"Graph API Error: {e}")
+        logger.error(f"Diff analysis failed: {e}")
         return jsonify({'success': False, 'error': str(e)}), 500
 
-
-@app.route('/api/export/<scan_id>', methods=['GET'])
+@app.route('/api/sentinel/analyze-vuln', methods=['POST'])
 @login_required
-def export_report(scan_id):
-    """Generate and Download PDF Report."""
+def sentinel_analyze_vuln():
+    """AI-powered vulnerability assessment."""
     try:
-        # Load Scan Metadata
-        history_file = Path('data/scan_history.json')
-        if not history_file.exists():
-            return jsonify({'success': False, 'error': 'No history'}), 404
-            
-        with open(history_file, 'r') as f:
-            history = json.load(f)
-            
-        scan_data = next((s for s in history if s['scan_id'] == scan_id), None)
-        if not scan_data:
-            return jsonify({'success': False, 'error': 'Scan not found'}), 404
-            
-        # Re-hydrate Profile (Duplicated logic, should refactor later)
-        report_path = scan_data.get('report_path')
-        if not report_path or not os.path.exists(report_path):
-             return jsonify({'success': False, 'error': 'Report file missing'}), 404
-             
-        with open(report_path, 'r') as f:
-            report_json = json.load(f)
-            
-        # Quick hydration
-        from core.engine import Profile
-        profile = Profile(target_query=report_json.get('target', 'unknown'), target_type=report_json.get('type', 'unknown'))
-        profile.emails = set(report_json.get('emails', []))
-        profile.phones = set(report_json.get('phones', []))
-        profile.usernames = set(report_json.get('usernames', []))
-        if 'raw_data' in report_json:
-            profile.raw_data = report_json['raw_data']
-            profile.patterns = report_json.get('patterns', [])
-
-        # Generate PDF
-        from intelligence.reporting import ReportGenerator
-        generator = ReportGenerator()
+        from intelligence.ai_sentinel import get_ai_analyzer
         
-        output_dir = Path('data/reports')
-        output_dir.mkdir(parents=True, exist_ok=True)
-        filename = f"Report_{scan_id}.pdf"
-        output_path = output_dir / filename
+        data = request.get_json()
+        vuln_data = data.get('vulnerability', {})
         
-        if not generator.generate_pdf(profile, scan_id, str(output_path)):
-            return jsonify({'success': False, 'error': 'Failed to generate PDF (WeasyPrint missing?)'}), 500
-            
-        return send_file(str(output_path), as_attachment=True, download_name=filename)
+        analyzer = get_ai_analyzer()
+        assessment = analyzer.assess_vulnerability(vuln_data)
         
+        return jsonify({'success': True, 'assessment': assessment})
     except Exception as e:
-        logger.error(f"Export Error: {e}")
+        logger.error(f"Vulnerability analysis failed: {e}")
         return jsonify({'success': False, 'error': str(e)}), 500
+
+@app.route('/api/sentinel/alerts', methods=['GET'])
+@login_required
+def sentinel_get_alerts():
+    """Get recent Sentinel alerts."""
+    try:
+        # Load recent alerts from data/intelligence/monitor_results
+        from pathlib import Path
+        import json
         
+        alerts_dir = Path('data/intelligence/monitor_results')
+        alerts_dir.mkdir(parents=True, exist_ok=True)
         
+        alerts = []
+        alert_files = sorted(alerts_dir.glob('monitor_alert_*.json'), reverse=True)[:20]
+        
+        for alert_file in alert_files:
+            with open(alert_file, 'r') as f:
+                alert = json.load(f)
+                alerts.append(alert)
+        
+        return jsonify({'success': True, 'alerts': alerts})
+    except Exception as e:
+        logger.error(f"Failed to load alerts: {e}")
+        return jsonify({'success': False, 'error': str(e)}), 500
+
 if __name__ == '__main__':
     # This is for development only
     socketio.run(
@@ -1660,4 +1631,5 @@ if __name__ == '__main__':
         port=config.get('FLASK_PORT'),
         debug=(config.get('FLASK_ENV') == 'development')
     )
+
 
